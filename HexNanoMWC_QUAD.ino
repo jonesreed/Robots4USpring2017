@@ -22,6 +22,22 @@ March  2013     V2.2
 volatile uint16_t serialRcValue[RC_CHANS] = {1502, 1502, 1502, 1502, 1502, 1502, 1502, 1502}; 
 #endif
 
+/**************************** Baylor University Variables ****************************/
+
+// Fire
+
+boolean isFiring = false;          // Set if it is firing
+
+
+
+// Detection of IR light
+
+boolean vulnerable = true;         // acts as a shield after being hit
+unsigned long invulnerabilityTime;
+uint8_t hits = 0; // counter for the number of hits recieved by a drone
+int irSensorValue;
+
+/************************** Baylor University Variables End **************************/
 /*********** RC alias *****************/
 enum rc {
   ROLL,
@@ -869,6 +885,59 @@ void servos2Neutral() {
 
 // ******** Main Loop *********
 void loop () {
+
+  /***********************************************************************************/
+  /*********************************** Edited Main ***********************************/
+  /***********************************************************************************/
+
+  // Code to sense IR shots
+  irSensorValue = analogRead(A4);
+  vulnerable = true;
+  if( irSensorValue < 0 && vulnerable == true){
+    hits++;
+    vulnerable = false;
+    //I want to chekc mastClk time
+  }
+  if( invulnerabilityTime >= 5){ /*time since last being hit is >= 5seconds */
+    vulnerable = true;
+  }
+
+  // Code to turn on RBG Health indicator
+  switch (hits){
+        case 0:
+          RGB_GREEN_ON;
+          break;
+        case 1:
+          greenBlink();
+          break;
+        case 2:
+          yellowBlink();
+          break;
+        case 3:
+          redBlink();
+          delay(5000);
+          hits = 0;
+          break;
+        default:
+          RGB_GREEN_ON;
+          break;
+      }
+
+    // Code to enable IR LED to 'Shoot'
+
+
+
+  /***********************************************************************************/
+  /************************************ Main End *************************************/
+  /***********************************************************************************/
+
+
+
+
+
+
+
+  
   static uint8_t rcDelayCommand; // this indicates the number of time (multiple of RC measurement at 50Hz) the sticks must be maintained to run or switch off motors
   static uint8_t rcSticks;       // this hold sticks position for command combos
   uint8_t axis,i;
