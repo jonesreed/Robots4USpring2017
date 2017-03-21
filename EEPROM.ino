@@ -1,6 +1,7 @@
 #include <avr/eeprom.h>
 
 
+
 uint8_t calculate_sum(uint8_t *cb , uint8_t siz) {
   uint8_t sum=0x55;  // checksum init
   while(--siz) sum += *cb++;  // calculate checksum (without checksum byte)

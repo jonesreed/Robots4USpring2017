@@ -13,6 +13,7 @@
 #define TX_BUFFER_SIZE 128
 #define INBUF_SIZE 64
 
+
 static volatile uint8_t serialHeadRX[UART_NUMBER],serialTailRX[UART_NUMBER];
 static uint8_t serialBufferRX[RX_BUFFER_SIZE][UART_NUMBER];
 static volatile uint8_t serialHeadTX[UART_NUMBER],serialTailTX[UART_NUMBER];

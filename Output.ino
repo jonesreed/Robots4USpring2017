@@ -1,6 +1,7 @@
 /**************************************************************************************/
 /***************                  Motor Pin order                  ********************/
 /**************************************************************************************/
+
 // since we are uing the PWM generation in a direct way, the pin order is just to inizialie the right pins 
 // its not possible to change a PWM output pin just by changing the order
 #if defined(PROMINI)

@@ -14,6 +14,7 @@
  * 7 - TUNING & DEVELOPER - if you know what you are doing; you have been warned
  */
 
+
 /* Notes:
  * 1. parameters marked with (*) in the comment are stored in eeprom and can be tweaked via serial monitor or LCD.
  *    Changing those values in config.h and upload will require a 'Reset' from the GUI to take effect
