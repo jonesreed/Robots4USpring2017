@@ -15,7 +15,7 @@ March  2013     V2.2
 #include "def.h"
 #include <IRremote.h>
 #include <IRremoteInt.h>
-//#include <Time.h>
+
 
 
 #include <avr/pgmspace.h>
@@ -28,23 +28,23 @@ volatile uint16_t serialRcValue[RC_CHANS] = {1502, 1502, 1502, 1502, 1502, 1502,
 /**************************** Baylor University Variables ****************************/
 
 // Fire
-IRsend irsend;
-unsigned int rawCode[1] = {0xAAAA};
-boolean isFiring = false;          // Set if it is firing
-int oncePerButton = 0;
+IRsend irsend;                               // Class from IRremote.h to send IR signal
+unsigned int rawCode[1] = {0xAAA};           // Sends 0b101010101010 encoded when IR signal is sent
+int oncePerPress = 0;
+boolean isFiring = false;
 
 
 
 // Detection of IR light
 
-boolean vulnerable = true;         // acts as a shield after being hit 
-uint8_t hits = 0; // counter for the number of hits recieved by a drone
+boolean vulnerable = true;                  // acts as a shield after being hit 
+uint8_t hits = 0;                           // counter for the number of hits recieved by a drone
 int irSensorValue;
 unsigned long previousMillis = 0;
 unsigned long timeWhenHit = 0;
-unsigned long currentTimeMillis = 0;
+unsigned long currentTimeForHits = 0;
 unsigned long difInTime = 0;
-
+unsigned long invulnerabilityTime = 5000;   // After drone is hit, will be invunerable for 5 seconds
 /************************** Baylor University Variables End **************************/
 /*********** RC alias *****************/
 enum rc {
@@ -905,9 +905,9 @@ void loop () {
     vulnerable = false;
     timeWhenHit = millis();
   }
-  currentTimeMillis = millis()
-  difInTime = currentTimeMillis - timeWhenHit;
-  if( difInTime >= 5000){ /*time since last being hit is >= 5seconds */
+  currentTimeForHits = millis()
+  difInTime = currentTimeForHits - timeWhenHit;
+  if( difInTime >= invulnerabilityTime ){ /*time since last being hit is >= 5seconds */
     vulnerable = true;
   }
   else{
@@ -947,22 +947,17 @@ void loop () {
       }
 
     // Code to enable IR LED to 'Shoot'
-    if(digitalRead(trigger) == HIGH){
-    
-      if(oncePerButton == 0){
-     
-        irsend.sendRaw( rawCode, sizeof(rawCode) / sizeof(rawCode[0]), 38); 
+    if(isFiring == true){
+      if(oncePerPress == 0){
+        irsend.sendRaw( rawCode, sizeof(rawCode) / sizeof(rawCode[0]), 38); // Tells the IR to send signal rawCode with frequency of 38 kHz
         delay(50);
-
       }
-      else{
-      // Button is till being held so       
-      }
-      oncePerButton = 1;
-    
+      else{}
+      oncePerPress = 1;
     }
     else{
-      oncePerButton = 0;
+      isFiring = false;
+      oncePerPress = 0;
     }
 
 
@@ -1500,6 +1495,9 @@ void loop () {
 
 /**************************** Baylor University Routines ****************************/
 
+void turnOnIRLED(){
+  isFiring = true;
+}
 
 void initADC() {
   // Set ADC prescalar to 128 - 125KHz sample rate @ 16MHz
