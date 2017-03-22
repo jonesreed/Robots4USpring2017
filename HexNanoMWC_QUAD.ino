@@ -13,6 +13,9 @@ March  2013     V2.2
 
 #include "config.h"
 #include "def.h"
+#include <IRremote.h>
+#include <IRremoteInt.h>
+//#include <Time.h>
 
 
 #include <avr/pgmspace.h>
@@ -25,17 +28,22 @@ volatile uint16_t serialRcValue[RC_CHANS] = {1502, 1502, 1502, 1502, 1502, 1502,
 /**************************** Baylor University Variables ****************************/
 
 // Fire
-
+IRsend irsend;
+unsigned int rawCode[1] = {0xAAAA};
 boolean isFiring = false;          // Set if it is firing
+int oncePerButton = 0;
 
 
 
 // Detection of IR light
 
-boolean vulnerable = true;         // acts as a shield after being hit
-unsigned long invulnerabilityTime;
+boolean vulnerable = true;         // acts as a shield after being hit 
 uint8_t hits = 0; // counter for the number of hits recieved by a drone
 int irSensorValue;
+unsigned long previousMillis = 0;
+unsigned long timeWhenHit = 0;
+unsigned long currentTimeMillis = 0;
+unsigned long difInTime = 0;
 
 /************************** Baylor University Variables End **************************/
 /*********** RC alias *****************/
@@ -892,39 +900,70 @@ void loop () {
 
   // Code to sense IR shots
   irSensorValue = analogRead(A4);
-  vulnerable = true;
-  if( irSensorValue < 0 && vulnerable == true){
+  if( irSensorValue == 0 && vulnerable == true){
     hits++;
     vulnerable = false;
-    //I want to chekc mastClk time
+    timeWhenHit = millis();
   }
-  if( invulnerabilityTime >= 5){ /*time since last being hit is >= 5seconds */
+  currentTimeMillis = millis()
+  difInTime = currentTimeMillis - timeWhenHit;
+  if( difInTime >= 5000){ /*time since last being hit is >= 5seconds */
     vulnerable = true;
   }
+  else{
+    vulnerable = false;
+  }
 
+
+  
   // Code to turn on RBG Health indicator
   switch (hits){
         case 0:
           RGB_GREEN_ON;
+          RGB_RED_OFF;
           break;
         case 1:
-          greenBlink();
+          RGB_GREEN_ON;
+          RGB_RED_ON;
           break;
         case 2:
-          yellowBlink();
+          RGB_GREEN_OFF;
+          RGB_RED_ON;
           break;
         case 3:
           redBlink();
           delay(5000);
+          break;
+        case 4:
+          redBlink();
+          delay(5000);
+          break;
+        case 5:
           hits = 0;
           break;
         default:
-          RGB_GREEN_ON;
+          RGB_BLUE_ON;
           break;
       }
 
     // Code to enable IR LED to 'Shoot'
+    if(digitalRead(trigger) == HIGH){
+    
+      if(oncePerButton == 0){
+     
+        irsend.sendRaw( rawCode, sizeof(rawCode) / sizeof(rawCode[0]), 38); 
+        delay(50);
 
+      }
+      else{
+      // Button is till being held so       
+      }
+      oncePerButton = 1;
+    
+    }
+    else{
+      oncePerButton = 0;
+    }
 
 
   /***********************************************************************************/
@@ -1458,3 +1497,57 @@ void loop () {
   writeServos();
   writeMotors();
 }
+
+/**************************** Baylor University Routines ****************************/
+
+
+void initADC() {
+  // Set ADC prescalar to 128 - 125KHz sample rate @ 16MHz
+  ADCSRA |= (1 << ADPS1) | (1 << ADPS0);
+
+  ADMUX |= (1 << REFS0); // Set ADC reference to AVCC
+  ADMUX |= (1 << ADLAR); // Left adjust ADC result to allow easy 8 bit reading
+
+  ADMUX |= (1 << MUX1);
+
+  //  ADCSRA |= (1 << ADFR); // Set ADC to Free-Running Mode
+  ADCSRA |= (1 << ADEN); // Enable ADC
+}
+
+uint16_t readADC(uint8_t ch) {
+  ch &= 0b00000001;
+  ADCSRA |= (1 << ADSC); // Start A2D Conversions
+
+  while (ADCSRA & (1 << ADSC));
+
+  return (ADCL);
+}
+
+
+void redBlink() {
+
+  // makes RGB LED flash red
+  unsigned long currentMillis = millis();
+
+  RGB_GREEN_OFF;
+
+  if (currentMillis - previousMillis >= interval) {
+
+    previousMillis = currentMillis;
+
+    if (LED_STATE == 0) {
+      RGB_RED_OFF;
+      LED_STATE = 1;
+    }
+    else {
+      RGB_RED_ON;
+      LED_STATE = 0;
+    }
+
+  }
+}
+
+
+
+
+/************************** Baylor University Routines End **************************/

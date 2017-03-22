@@ -295,6 +295,54 @@
 #endif
 
 /**************************  atmega32u4 (Promicro)  ***********************************/
+
+/*************************************************************************************/
+/************************************ Baylor Defs ************************************/
+/*************************************************************************************/
+
+/******************************** IR Cannon :: IR LED ********************************/
+
+// Pin A5 -> PF0(ADC0) 41
+
+#define FIRE_PIN_MODE             DDRF |= (1<<0);  //Set to Output 
+//#define FIRE_PIN_ON               PORTF |= (1<<0); // Turn Pin On
+//#define FIRE_PIN_OFF              PORTF &= ~(1<<0); // Turn Pin Off
+
+/***************** Hit Detection System :: IR Transistor and RGB LED ******************/
+
+// Pin A4 -> PF1(ADC1) 40
+
+#define IR_SENSOR              pinMode(40,INPUT); // set to input
+
+//#define IRpin_PIN              PINF1
+//#define IRpin                  1
+
+//#define T_LED                pinMode(40,OUTPUT); // set to output
+//#define T_LED_ON             PORTF |= (1<<1); // turn pin on
+//#define T_LED_OFF            PORTF &= ~(1<<1); // turn pin off
+
+// Pin D8 -> PB4(ADC11) 28
+
+#define RGB_RED                pinMode(28,OUTPUT); // set to output
+#define RGB_RED_ON             PORTB |= (1<<4); // turn pin on
+#define RGB_RED_OFF            PORTB &= ~(1<<4); // turn pin off
+
+// Pin D12 -> PD6(ADC9) 26
+
+#define RGB_GREEN              pinMode(26,OUTPUT); // set to output
+#define RGB_GREEN_ON           PORTD |= (1<<6); // turn pin on
+#define RGB_GREEN_OFF          PORTD &= ~(1<<6); // turn pin off
+
+// Pin D4 -> PD4(ADC8) 25
+
+#define RGB_BLUE              pinMode(25,OUTPUT); // set to output
+#define RGB_BLUE_ON           PORTD |= (1<<4); // turn pin on
+#define RGB_BLUE_OFF          PORTD &= ~(1<<4); // turn pin off
+
+
+/*************************************************************************************/
+/********************************** End Baylor Defs **********************************/
+/*************************************************************************************/
 #if defined(PROMICRO)
   #if defined(MICROWII)
     #define A32U4ALLPINS 
