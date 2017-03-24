@@ -302,11 +302,10 @@
 
 /************************************** IR LED ****************************************/
 
-// Pin A5 -> PF0(ADC0) 41
+// Pin D12 -> PD6(ADC9) 26
 
-#define FIRE_PIN_MODE             DDRF |= (1<<0);  //Set to Output 
-//#define FIRE_PIN_ON               PORTF |= (1<<0); // Turn Pin On
-//#define FIRE_PIN_OFF              PORTF &= ~(1<<0); // Turn Pin Off
+#define FIRE_PIN_MODE             pinMode(26,OUTPUT); // set to output 
+
 
 /***************** Hit Detection System :: IR Transistor and RGB LED ******************/
 
@@ -314,20 +313,15 @@
 
 #define IR_SENSOR              pinMode(40,INPUT); // set to input
 
-//#define IRpin_PIN              PINF1
-//#define IRpin                  1
-
-
-
 // Pin D8 -> PB4(ADC11) 28
 
 #define RGB_RED                pinMode(28,OUTPUT); // set to output
 #define RGB_RED_ON             PORTB |= (1<<4); // turn pin on
 #define RGB_RED_OFF            PORTB &= ~(1<<4); // turn pin off
 
-// Pin D12 -> PD6(ADC9) 26
+// Pin A5 -> PF0(ADC0) 41
 
-#define RGB_GREEN              pinMode(26,OUTPUT); // set to output
+#define RGB_GREEN              pinMode(41,OUTPUT); // set to output
 #define RGB_GREEN_ON           PORTD |= (1<<6); // turn pin on
 #define RGB_GREEN_OFF          PORTD &= ~(1<<6); // turn pin off
 
