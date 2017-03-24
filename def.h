@@ -304,7 +304,7 @@
 
 // Pin D12 -> PD6(ADC9) 26
 
-#define FIRE_PIN_MODE             pinMode(26,OUTPUT); // set to output 
+//#define FIRE_PIN_MODE             pinMode(26,OUTPUT); // set to output 
 
 
 /***************** Hit Detection System :: IR Transistor and RGB LED ******************/
@@ -322,8 +322,8 @@
 // Pin A5 -> PF0(ADC0) 41
 
 #define RGB_GREEN              pinMode(41,OUTPUT); // set to output
-#define RGB_GREEN_ON           PORTD |= (1<<6); // turn pin on
-#define RGB_GREEN_OFF          PORTD &= ~(1<<6); // turn pin off
+#define RGB_GREEN_ON           PORTD |= (1<<0); // turn pin on
+#define RGB_GREEN_OFF          PORTD &= ~(1<<0); // turn pin off
 
 // Pin D4 -> PD4(ADC8) 25
 

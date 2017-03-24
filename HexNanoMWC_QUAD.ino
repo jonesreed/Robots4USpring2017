@@ -28,11 +28,12 @@ volatile uint16_t serialRcValue[RC_CHANS] = {1502, 1502, 1502, 1502, 1502, 1502,
 /**************************** Baylor University Variables ****************************/
 
 // Fire
+/*
 IRsend irsend;                               // Class from IRremote.h to send IR signal
 unsigned int rawCode[1] = {0xAAA};           // Sends 0b101010101010 encoded when IR signal is sent
 int oncePerPress = 0;
 boolean isFiring = false;
-
+*/
 
 
 // Detection of IR light
@@ -44,7 +45,18 @@ unsigned long previousMillis = 0;
 unsigned long timeWhenHit = 0;
 unsigned long currentTimeForHits = 0;
 unsigned long difInTime = 0;
-unsigned long invulnerabilityTime = 5000;   // After drone is hit, will be invunerable for 5 seconds
+unsigned long invulnerabilityTime = 1000;   // After drone is hit, will be invunerable for 5 seconds
+
+boolean shouldBeBlinking = false;
+unsigned long redBlinkOn;
+unsigned long redBlinkOff;
+unsigned long redBlinkCurrentTimeOFF;
+unsigned long redBlinkCurrentTimeON;
+unsigned long redBlinkDifferenceON;
+unsigned long redBlinkDifferenceOFF;
+unsigned long blinkTime = 175;
+int redLEDstate = 0;
+int firstTimeBlink = 1;
 /************************** Baylor University Variables End **************************/
 /*********** RC alias *****************/
 enum rc {
@@ -921,32 +933,69 @@ void loop () {
         case 0:
           RGB_GREEN_ON;
           RGB_RED_OFF;
+          RGB_BLUE_OFF;
+          shouldBeBlinking = false;
           break;
         case 1:
           RGB_GREEN_ON;
           RGB_RED_ON;
+          RGB_BLUE_OFF;
+          shouldBeBlinking = false;
           break;
         case 2:
           RGB_GREEN_OFF;
           RGB_RED_ON;
+          RGB_BLUE_OFF;
+          shouldBeBlinking = false;
           break;
         case 3:
-          redBlink();
-          delay(5000);
+          shouldBeBlinking = true;
           break;
         case 4:
-          redBlink();
-          delay(5000);
-          break;
-        case 5:
-          hits = 0;
+          RGB_GREEN_OFF;
+          RGB_RED_ON;
+          RGB_BLUE_ON;
+          shouldBeBlinking = false;
           break;
         default:
-          RGB_BLUE_ON;
+          hits = 0;
+          firstTimeBlink = 1;
+          shouldBeBlinking = false;
           break;
       }
 
-    // Code to enable IR LED to 'Shoot'
+      if(shouldBeBlinking){
+        if(redLEDstate == 0 && firstTimeBlink == 1){
+          RGB_GREEN_OFF;
+          RGB_RED_ON;
+          RGB_BLUE_OFF;
+          redLEDstate = 1;
+          firstTimeBlink = 0;
+          redBlinkOn = millis();
+        }
+        redBlinkCurrentTimeON = millis();
+        redBlinkDifferenceON = redBlinkCurrentTimeON - redBlinkOn;
+      
+        if(redBlinkDifferenceON >= blinkTime && redLEDstate == 1){
+          RGB_GREEN_OFF;
+          RGB_RED_OFF;
+          RGB_BLUE_OFF;
+          redLEDstate = 0;
+          redBlinkOff = millis();
+        }
+        redBlinkCurrentTimeOFF = millis();
+        redBlinkDifferenceOFF = redBlinkCurrentTimeOFF - redBlinkOff;
+      
+        if(redBlinkDifferenceOFF >= blinkTime && redLEDstate == 0){
+          RGB_GREEN_OFF;
+          RGB_RED_ON;
+          RGB_BLUE_OFF;
+          redLEDstate = 1;
+          redBlinkOn = millis();
+        }
+     }
+
+    /*// Code to enable IR LED to 'Shoot'
     if(isFiring == true){
       if(oncePerPress == 0){
         irsend.sendRaw( rawCode, sizeof(rawCode) / sizeof(rawCode[0]), 38); // Tells the IR to send signal rawCode with frequency of 38 kHz
@@ -959,6 +1008,7 @@ void loop () {
       isFiring = false;
       oncePerPress = 0;
     }
+    */
 
 
   /***********************************************************************************/
@@ -1522,28 +1572,7 @@ uint16_t readADC(uint8_t ch) {
 }
 
 
-void redBlink() {
 
-  // makes RGB LED flash red
-  unsigned long currentMillis = millis();
-
-  RGB_GREEN_OFF;
-
-  if (currentMillis - previousMillis >= interval) {
-
-    previousMillis = currentMillis;
-
-    if (LED_STATE == 0) {
-      RGB_RED_OFF;
-      LED_STATE = 1;
-    }
-    else {
-      RGB_RED_ON;
-      LED_STATE = 0;
-    }
-
-  }
-}
 
 
 

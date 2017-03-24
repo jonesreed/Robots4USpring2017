@@ -73,27 +73,6 @@ void loop() {
   //Serial.println(irSensorValue);
   if( irSensorValue == 0 && vulnerable == true){
     hits++;
-    Serial.println(irSensorValue);
-    Serial.print("You Have Been Shot - ");
-    Serial.print(hits);
-    if(hits == 0){
-      Serial.println(" - LED should be Green.");
-    }
-    if(hits == 1){
-      Serial.println(" - LED should be BLUE.");
-    }
-    if(hits == 2){
-      Serial.println(" - LED should be Red.");
-    }
-    if(hits == 3){
-      Serial.println(" - LED should be Blinking Red.");
-    }
-    if(hits == 4){
-      Serial.println(" - LED should be Blinking Red.");
-    }
-    if(hits == 5){
-      Serial.println(" - LED should be Blue.");
-    }
     vulnerable = false;
     timeWhenHit = millis();
   }
@@ -184,7 +163,6 @@ void loop() {
     if(digitalRead(trigger) == HIGH){
       if(oncePerPress == 0){
         irsend.sendRaw( rawCode, sizeof(rawCode) / sizeof(rawCode[0]), 38); // Tells the IR to send signal rawCode with frequency of 38 kHz
-        Serial.println("IR LED HAS BEEN FIRED!!!!!!!");
         delay(50);
       }
       else{}
