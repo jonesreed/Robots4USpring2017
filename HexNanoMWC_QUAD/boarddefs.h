@@ -508,8 +508,8 @@
 // defines for timer_tiny0 (8 bits)
 #elif defined(IR_USE_TIMER_TINY0)
 #define TIMER_RESET
-#define TIMER_ENABLE_PWM     (TCCR0A |= _BV(COM0B1))
-#define TIMER_DISABLE_PWM    (TCCR0A &= ~(_BV(COM0B1)))
+#define TIMER_ENABLE_PWM     (TCCR0A |= _BV(COM0A1))
+#define TIMER_DISABLE_PWM    (TCCR0A &= ~(_BV(COM0A1)))
 #define TIMER_ENABLE_INTR    (TIMSK0 |= _BV(OCIE0A))		//BAYLOR was TIMSK, changed to TIMSK0
 #define TIMER_DISABLE_INTR   (TIMSK0 &= ~(_BV(OCIE0A)))		//BAYLOR was TIMSK, changed to TIMSK0
 #define TIMER_INTR_NAME      TIMER0_COMPA_vect

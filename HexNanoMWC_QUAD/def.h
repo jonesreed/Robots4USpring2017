@@ -299,10 +299,23 @@
 /*************************************************************************************/
 
 /************************************** IR LED ****************************************/
+#define SYSCLOCK             16000000
+#define TIMER_RESET
+#define TIMER_ENABLE_PWM     (TCCR0A |= _BV(COM0A0))
+#define TIMER_DISABLE_PWM    (TCCR0A &= ~(_BV(COM0A0)))
+#define TIMER_ENABLE_INTR    (TIMSK0 |= _BV(OCIE0A))
+#define TIMER_DISABLE_INTR   (TIMSK0 &= ~(_BV(OCIE0A)))
+#define TIMER_INTR_NAME      TIMER0_COMPA_vect
+#define TIMER_CONFIG_KHZ(val) ({ \
+  const uint8_t pwmval = SYSCLOCK / 2000 / (val); \
+  TCCR0A = _BV(WGM01) | _BV(WGM00); \
+  TCCR0B = _BV(WGM02) | _BV(CS00); \
+  OCR0A = pwmval; \
+  OCR0B = pwmval / 3; \
+})
 
-// Pin D11
-
-//#define FIRE_PIN_MODE             pinMode(11,OUTPUT); // set to output 
+ #define TIMER_PWM_PIN        11
+ #define IR_PIN               pinMode(TIMER_PWM_PIN, OUTPUT);
 
 
 /***************** Hit Detection System :: IR Transistor and RGB LED ******************/

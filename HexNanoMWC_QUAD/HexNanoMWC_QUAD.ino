@@ -16,8 +16,7 @@ March  2013     V2.2
 #include "def.h"
 
 // BAYLOR includes
-#include "IRremote.h"
-#include "IRremoteInt.h"
+
 
 #include <avr/pgmspace.h>
 #define  VERSION  220
@@ -34,10 +33,13 @@ uint8_t flightState = 0;
 const int RGBredPin = 4;
 const int RGBbluePin = 12;
 const int RGBgreenPin = 8;
+
 // Fire
-IRsend irsend;                               // Class from IRremote.h to send IR signal
-unsigned int rawCode[1] = {0xAAA};           // Sends 0b101010101010 encoded when IR signal is sent
-int oncePerPress = 0;
+int firstTimeIR = 1;
+unsigned long IROn;
+unsigned long IRCurrentTimeON;
+unsigned long IRDifferenceON;
+unsigned long IRTime = 1;
 boolean isFiring = false;
 
 
@@ -60,7 +62,7 @@ unsigned long redBlinkCurrentTimeOFF;
 unsigned long redBlinkCurrentTimeON;
 unsigned long redBlinkDifferenceON;
 unsigned long redBlinkDifferenceOFF;
-unsigned long blinkTime = 175;
+unsigned long blinkTime = 5000;
 int redLEDstate = 0;
 int firstTimeBlink = 1;
 /************************** Baylor University Variables End **************************/
@@ -859,6 +861,11 @@ void setup()
         calibration_flag = 0;
 	//------------------------------------------------------------------
 	system_init();
+  RGB_RED;
+  RGB_BLUE;
+  RGB_GREEN;
+  IR_PIN;
+  IR_SENSOR;
 }
 
 //------------------------------------------------------------------
@@ -1042,18 +1049,23 @@ void loop () {
 
     // Code to enable IR LED to 'Shoot'
     if(isFiring == true){
-      if(oncePerPress == 0){
-        irsend.sendRaw( rawCode, sizeof(rawCode) / sizeof(rawCode[0]), 38); // Tells the IR to send signal rawCode with frequency of 38 kHz
-        delay(50);
-      }
-      else{}
-      oncePerPress = 1;
-    }
-    else{
-      isFiring = false;
-      oncePerPress = 0;
+      if(firstTimeIR == 1){
+          TIMER_CONFIG_KHZ(38);
+          firstTimeIR = 0;
+          TIMER_ENABLE_PWM;
+          IROn = millis(); 
+        }
+        IRCurrentTimeON = millis();
+        IRDifferenceON = IRCurrentTimeON - IROn;
+      
+        if(IRDifferenceON >= IRTime){
+          TIMER_DISABLE_PWM;
+          isFiring = false;
+          firstTimeIR = 1;
+        }
     }
     
+   
 
 
   /***********************************************************************************/
@@ -1580,8 +1592,10 @@ void loop () {
 }
 /**************************** Baylor University Routines ****************************/
 
+
 void turnOnIRLED(){
   isFiring = true;
+  hits++;
 }
 
 /************************** Baylor University Routines End **************************/
