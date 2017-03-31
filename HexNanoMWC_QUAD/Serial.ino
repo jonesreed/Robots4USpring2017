@@ -92,15 +92,10 @@ const uint32_t PROGMEM capability = 0+BIND_CAPABLE;
 #define MSP_SELECT_SETTING       210   //in message          Select Setting Number (0-2)
 #define MSP_SET_HEAD             211   //in message          define a new heading hold direction
 
-// Bayor Univeristy MSP Commands ************************************************************
-#define MSP_FIRE              220  // Fire
-//#define MSP_LAUNCH            221  // Launch
-//#define MSP_ALL_MOTOR         222  // All Motors
-//#define MSP_ONE_MOTOR         223  // One Motor
-//#define MSP_TWO_MOTOR         224  // Two Motors
-//#define MSP_THREE_MOTOR       225  // Three Motors
+/********************************* Baylor University MSP Messages *********************/
+#define MSP_LAUNCH               221  // Launch
 
-// End Baylor MSP ***************************************************************************
+/********************************* End Baylor MSP *************************************/
 
 #define MSP_BIND                 240   //in message          no param
 
@@ -754,11 +749,14 @@ void evaluateCommand() {
      }
      break;
    #endif
-   //Baylor Custom MSP *************************************************************
-  case MSP_FIRE:
-    turnOnIRLED();
-    break;
-   //End Baylor Custom MSP**********************************************************
+
+   /********************* Baylor University Added MSP Messages *************************/
+   case MSP_LAUNCH:
+      go_launch();
+      break;
+  
+   /********************* End Baylor MSP **********************************************/
+   
    default:  // we do not know how to handle the (valid) message, indicate error MSP $M!
      headSerialError(0);
      break;

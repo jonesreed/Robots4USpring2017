@@ -294,45 +294,6 @@
 #endif
 
 /**************************  atmega32u4 (Promicro)  ***********************************/
-/*************************************************************************************/
-/************************************ Baylor Defs ************************************/
-/*************************************************************************************/
-
-/************************************** IR LED ****************************************/
-
-// Pin D12 -> PD6(ADC9) 26
-
-//#define FIRE_PIN_MODE             pinMode(26,OUTPUT); // set to output 
-
-
-/***************** Hit Detection System :: IR Transistor and RGB LED ******************/
-
-// Pin A4 -> PF1(ADC1) 40
-
-#define IR_SENSOR              pinMode(A4,INPUT); // set to input
-
-// Pin D8 -> PB4(ADC11) 28
-
-#define RGB_RED                pinMode(RGBredPin,OUTPUT); // set to output
-#define RGB_RED_ON             PORTB |= (1<<4); // turn pin on
-#define RGB_RED_OFF            PORTB &= ~(1<<4); // turn pin off
-
-// Pin A5 -> PF0(ADC0) 41
-
-#define RGB_GREEN              pinMode(RGBgreenPin,OUTPUT); // set to output
-#define RGB_GREEN_ON           PORTD |= (1<<0); // turn pin on
-#define RGB_GREEN_OFF          PORTD &= ~(1<<0); // turn pin off
-
-// Pin D4 -> PD4(ADC8) 25
-
-#define RGB_BLUE              pinMode(RGBbluePin,OUTPUT); // set to output
-#define RGB_BLUE_ON           PORTD |= (1<<4); // turn pin on
-#define RGB_BLUE_OFF          PORTD &= ~(1<<4); // turn pin off
-
-
-/*************************************************************************************/
-/********************************** End Baylor Defs **********************************/
-/*************************************************************************************/
 #if defined(PROMICRO)
   #if defined(MICROWII)
     #define A32U4ALLPINS 
