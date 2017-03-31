@@ -93,7 +93,7 @@ const uint32_t PROGMEM capability = 0+BIND_CAPABLE;
 #define MSP_SET_HEAD             211   //in message          define a new heading hold direction
 
 // Bayor Univeristy MSP Commands ************************************************************
-#define MSP_FIRE              220  // Fire
+#define MSP_FIRE                 220  // Fire
 //#define MSP_LAUNCH            221  // Launch
 //#define MSP_ALL_MOTOR         222  // All Motors
 //#define MSP_ONE_MOTOR         223  // One Motor

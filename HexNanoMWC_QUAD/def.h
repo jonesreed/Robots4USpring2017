@@ -300,34 +300,34 @@
 
 /************************************** IR LED ****************************************/
 
-// Pin D12 -> PD6(ADC9) 26
+// Pin D11
 
-//#define FIRE_PIN_MODE             pinMode(26,OUTPUT); // set to output 
+//#define FIRE_PIN_MODE             pinMode(11,OUTPUT); // set to output 
 
 
 /***************** Hit Detection System :: IR Transistor and RGB LED ******************/
 
 // Pin A4 -> PF1(ADC1) 40
 
-#define IR_SENSOR              pinMode(A4,INPUT); // set to input
+#define IR_SENSOR              pinMode(A5,INPUT); // set to input
 
-// Pin D8 -> PB4(ADC11) 28
+// Pin D4 -> PD4
 
 #define RGB_RED                pinMode(RGBredPin,OUTPUT); // set to output
-#define RGB_RED_ON             PORTB |= (1<<4); // turn pin on
-#define RGB_RED_OFF            PORTB &= ~(1<<4); // turn pin off
+#define RGB_RED_ON             PORTD |= (1<<4); // turn pin on
+#define RGB_RED_OFF            PORTD &= ~(1<<4); // turn pin off
 
-// Pin A5 -> PF0(ADC0) 41
+// Pin D8 -> PB4
 
 #define RGB_GREEN              pinMode(RGBgreenPin,OUTPUT); // set to output
-#define RGB_GREEN_ON           PORTD |= (1<<0); // turn pin on
-#define RGB_GREEN_OFF          PORTD &= ~(1<<0); // turn pin off
+#define RGB_GREEN_ON           PORTB |= (1<<4); // turn pin on
+#define RGB_GREEN_OFF          PORTB &= ~(1<<4); // turn pin off
 
-// Pin D4 -> PD4(ADC8) 25
+// Pin D12 -> PD6
 
 #define RGB_BLUE              pinMode(RGBbluePin,OUTPUT); // set to output
-#define RGB_BLUE_ON           PORTD |= (1<<4); // turn pin on
-#define RGB_BLUE_OFF          PORTD &= ~(1<<4); // turn pin off
+#define RGB_BLUE_ON           PORTD |= (1<<6); // turn pin on
+#define RGB_BLUE_OFF          PORTD &= ~(1<<6); // turn pin off
 
 
 /*************************************************************************************/
@@ -348,29 +348,29 @@
       #define LEDPIN_ON                 PORTD |= (1<<5);
     #endif
   #else
-    #define LEDPIN_PINMODE           DDRD |= (1<<6);
-    #define LEDPIN_OFF               PORTD &= ~(1<<6);
-    #define LEDPIN_ON                PORTD |= (1<<6);   
-    #define LEDPIN_TOGGLE            PIND |= 1<<6;     //switch LEDPIN state (Port D6)  
+    //#define LEDPIN_PINMODE           DDRD |= (1<<6);
+    //#define LEDPIN_OFF               PORTD &= ~(1<<6);
+    //#define LEDPIN_ON                PORTD |= (1<<6);   
+    //#define LEDPIN_TOGGLE            PIND |= 1<<6;     //switch LEDPIN state (Port D6)  
   #endif
   #if defined(D8BUZZER)
-    #define BUZZERPIN_PINMODE          DDRB |= (1<<4);
+    //#define BUZZERPIN_PINMODE          DDRB |= (1<<4);
     #if defined PILOTLAMP
-      #define    PL_PIN_ON            PORTB |= 1<<4;
-      #define    PL_PIN_OFF           PORTB &= ~(1<<4);
+      //#define    PL_PIN_ON            PORTB |= 1<<4;
+      //#define    PL_PIN_OFF           PORTB &= ~(1<<4);
     #else
-      #define BUZZERPIN_ON               PORTB |= 1<<4;
-      #define BUZZERPIN_OFF              PORTB &= ~(1<<4); 
+      //#define BUZZERPIN_ON               PORTB |= 1<<4;
+      //#define BUZZERPIN_OFF              PORTB &= ~(1<<4); 
     #endif 
     
   #elif defined(A32U4ALLPINS)
-    #define BUZZERPIN_PINMODE          DDRD |= (1<<4);
+    //#define BUZZERPIN_PINMODE          DDRD |= (1<<4);
     #if defined PILOTLAMP
-      #define    PL_PIN_ON    PORTD |= 1<<4;
-      #define    PL_PIN_OFF   PORTD &= ~(1<<4);
+      //#define    PL_PIN_ON    PORTD |= 1<<4;
+      //#define    PL_PIN_OFF   PORTD &= ~(1<<4);
     #else
-      #define BUZZERPIN_ON               PORTD |= 1<<4;
-      #define BUZZERPIN_OFF              PORTD &= ~(1<<4);  
+      //#define BUZZERPIN_ON               PORTD |= 1<<4;
+      //#define BUZZERPIN_OFF              PORTD &= ~(1<<4);  
     #endif  
   #else
     #define BUZZERPIN_PINMODE          DDRD |= (1<<3);
@@ -401,8 +401,8 @@
   #define USB_CDC_RX                 2
   
   //soft PWM Pins  
-  #define SOFT_PWM_1_PIN_HIGH        PORTD |= 1<<4;
-  #define SOFT_PWM_1_PIN_LOW         PORTD &= ~(1<<4);
+ // #define SOFT_PWM_1_PIN_HIGH        PORTD |= 1<<4;
+ // #define SOFT_PWM_1_PIN_LOW         PORTD &= ~(1<<4);
   #define SOFT_PWM_2_PIN_HIGH        PORTF |= 1<<5;
   #define SOFT_PWM_2_PIN_LOW         PORTF &= ~(1<<5);
   #if !defined(A32U4ALLPINS)
@@ -432,9 +432,9 @@
   #define SERVO_3_PIN_HIGH  PORTF |= 1<<5;
   #define SERVO_3_PIN_LOW   PORTF &= ~(1<<5);
   #if !defined(A32U4ALLPINS)
-    #define SERVO_4_PINMODE   DDRD |= (1<<4); // 4
-    #define SERVO_4_PIN_HIGH  PORTD |= 1<<4;
-    #define SERVO_4_PIN_LOW   PORTD &= ~(1<<4);
+    //#define SERVO_4_PINMODE   DDRD |= (1<<4); // 4
+    //#define SERVO_4_PIN_HIGH  PORTD |= 1<<4;
+    //#define SERVO_4_PIN_LOW   PORTD &= ~(1<<4);
   #else
     #define SERVO_4_PINMODE   DDRF |= (1<<4); // A3
     #define SERVO_4_PIN_HIGH  PORTF |= 1<<4;

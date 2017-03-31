@@ -8,6 +8,8 @@ March  2013     V2.2
  any later version. see <http://www.gnu.org/licenses/>
 */
 
+// BEFORE YOU CAN UPLOAD THE CODE TO THE BOARD YOU MUST DOWNLOAD IRremote LIBRARY, ADD IT TO SKETCH, and REPLACE BOARDDEFS.h!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #include <avr/io.h>
 
 #include "config.h"
@@ -29,9 +31,9 @@ uint8_t flightState = 0;
 #endif
 
 /**************************** Baylor University Variables ****************************/
-const int RGBredPin = 8;
+const int RGBredPin = 4;
 const int RGBbluePin = 12;
-const int RGBgreenPin = 4;
+const int RGBgreenPin = 8;
 // Fire
 IRsend irsend;                               // Class from IRremote.h to send IR signal
 unsigned int rawCode[1] = {0xAAA};           // Sends 0b101010101010 encoded when IR signal is sent
@@ -949,12 +951,12 @@ void servos2Neutral() {
 
 // ******** Main Loop *********
 void loop () {
+ 
 /***********************************************************************************/
 /*********************************** BAYLOR Main ***********************************/
 /***********************************************************************************/
-
   // Code to sense IR shots
-  irSensorValue = analogRead(A4);
+  irSensorValue = analogRead(A5);
   if( irSensorValue == 0 && vulnerable == true){
     hits++;
     vulnerable = false;
@@ -962,7 +964,7 @@ void loop () {
   }
   currentTimeForHits = millis();
   difInTime = currentTimeForHits - timeWhenHit;
-  if( difInTime >= invulnerabilityTime ){ /*time since last being hit is >= 5seconds */
+  if( difInTime >= invulnerabilityTime ){ //time since last being hit is >= 5seconds 
     vulnerable = true;
   }
   else{
@@ -980,9 +982,9 @@ void loop () {
           shouldBeBlinking = false;
           break;
         case 1:
-          RGB_GREEN_ON;
-          RGB_RED_ON;
-          RGB_BLUE_OFF;
+          RGB_GREEN_OFF;
+          RGB_RED_OFF;
+          RGB_BLUE_ON;
           shouldBeBlinking = false;
           break;
         case 2:
@@ -994,12 +996,12 @@ void loop () {
         case 3:
           shouldBeBlinking = true;
           break;
-        case 4:
+        /*case 4:
           RGB_GREEN_OFF;
           RGB_RED_ON;
           RGB_BLUE_ON;
           shouldBeBlinking = false;
-          break;
+          break;*/
         default:
           hits = 0;
           firstTimeBlink = 1;
