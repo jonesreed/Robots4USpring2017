@@ -8,6 +8,8 @@ March  2013     V2.2
  any later version. see <http://www.gnu.org/licenses/>
 */
 
+// BEFORE YOU CAN UPLOAD THE CODE TO THE BOARD YOU MUST DOWNLOAD IRremote LIBRARY, ADD IT TO SKETCH, and REPLACE BOARDDEFS.h!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #include <avr/io.h>
 
 #include "config.h"
@@ -28,10 +30,10 @@ int16_t absolutedAccZ = 0;
 uint8_t flightState = 0;
 #endif
 
-/**************************** Baylor University Variables ****************************/
-const int RGBredPin = 8;
+/********************************* Baylor University Variables **********************************/
+const int RGBredPin = 4;
 const int RGBbluePin = 12;
-const int RGBgreenPin = 4;
+const int RGBgreenPin = 8;
 // Fire
 IRsend irsend;                               // Class from IRremote.h to send IR signal
 unsigned int rawCode[1] = {0xAAA};           // Sends 0b101010101010 encoded when IR signal is sent
@@ -61,7 +63,22 @@ unsigned long redBlinkDifferenceOFF;
 unsigned long blinkTime = 175;
 int redLEDstate = 0;
 int firstTimeBlink = 1;
-/************************** Baylor University Variables End **************************/
+//Launch
+
+boolean isLaunch = false;                         // Set if need to launch
+int curThrot = 0;                                 // Throttle to detect change
+int startThrottle = 500;                         // Starting place for Throttle
+int defStartThrottle = startThrottle;             // To set it back later
+int incThrottle = 1;                              // How much to increment throttle
+int accToReach = -1000;                           // Lower or Negative Means faster
+boolean accReached = false;                       // Has the acceleration been reached
+int launchThrot = 1300;                           // Throttle during launch
+int stableThrot = launchThrot - 10;               // Throttle to stabalize before altitude is maintained
+int altAdd = 70;                                // Altitude to Add
+int16_t prevAux2Data = 0;                         // Store Altitude Hold from Aux2 and only change if a change was made in the app.
+boolean launchCalledHover = false;                // Variable to call hovermode
+
+ /******************************** End Baylor Variables *****************************************/
 
 /*********** RC alias *****************/
 enum rc {
@@ -853,6 +870,10 @@ void system_init(void)
 
 void setup()
 {
+
+  /****************************** Baylor University Setup ******************************/
+
+  /****************************** End Baylor Setup *************************************/
   	//------------------------------------------------------------------
         calibration_flag = 0;
 	//------------------------------------------------------------------
@@ -911,8 +932,13 @@ void go_arm() {
 //------------------------------------------------------------------
 }
 
+/***************************** Baylor Modified Disarm Function ***********************************/
 // Unlock function
 void go_disarm() {
+  isLaunch = false;
+  launchCalledHover = false;
+  accReached = false;
+  rcData[THROTTLE] = MINTHROTTLE;
   if (f.ARMED) {
     f.ARMED = 0;
     #ifdef LOG_PERMANENT
@@ -926,6 +952,8 @@ void go_disarm() {
     #endif
   }
 }
+/***************************** End Baylor Disarm *************************************************/
+
 void servos2Neutral() {
   #ifdef TRI
     servo[5] = 1500; // we center the yaw servo in conf mode
@@ -949,11 +977,9 @@ void servos2Neutral() {
 
 // ******** Main Loop *********
 void loop () {
-/***********************************************************************************/
-/*********************************** BAYLOR Main ***********************************/
-/***********************************************************************************/
 
-  // Code to sense IR shots
+/******************************** Baylor Modified Loop ***********************************/
+// Code to sense IR shots
   irSensorValue = analogRead(A4);
   if( irSensorValue == 0 && vulnerable == true){
     hits++;
@@ -1051,12 +1077,44 @@ void loop () {
       isFiring = false;
       oncePerPress = 0;
     }
+  // Handle Launch
+  
+  /*if (f.ARMED && isLaunch)
+  {
+    if (rcData[THROTTLE] < launchThrot)
+    {
+      rcData[THROTTLE] = startThrottle;
+
+      if (startThrottle <= 2000)
+      {
+        startThrottle += incThrottle;     
+      }
+    }
+    else
+    {
+      accReached = true;
+      AltHold = EstAlt + altAdd;
+    }
     
-
-
-  /***********************************************************************************/
-  /********************************** BAYLOR Main End ********************************/
-  /***********************************************************************************/
+    if (accReached)
+    {
+      curThrot = rcData[THROTTLE];
+      startThrottle = defStartThrottle;
+      isLaunch = false;
+      accReached = false;
+      launchCalledHover = true;   
+    }       
+  }*/
+  // Handle Launch
+  
+  if (f.ARMED && isLaunch)
+  {
+    AltHold = EstAlt + altAdd;
+    launchCalledHover = true;
+  }
+    
+  /****************************** End Baylor Loop *************************************/
+  
   static uint8_t rcDelayCommand; // this indicates the number of time (multiple of RC measurement at 50Hz) the sticks must be maintained to run or switch off motors
   static uint8_t rcSticks;       // this hold sticks position for command combos
   uint8_t axis,i;
@@ -1091,9 +1149,21 @@ void loop () {
      rcData[0] = serialRcValue[0];
      rcData[1] = serialRcValue[1];
      rcData[2] = serialRcValue[2];
-     rcData[3] = serialRcValue[3];
-     rcData[4] = serialRcValue[4];
-     rcData[5] = serialRcValue[5];
+     //Baylor Launch Throttle Disabled
+     /* if (!isLaunch) {
+        if (curThrot < serialRcValue[3]) {
+          curThrot = 0;                 //Reset cut throttle
+          launchCalledHover = false;    // Disable Launch Hover
+          rcData[3] = serialRcValue[3];  //Set Throttle if it change from serial
+        }
+      }*/
+      rcData[3] = serialRcValue[3];
+      rcData[4] = serialRcValue[4];
+      if (prevAux2Data != serialRcValue[5]) { // Only Change if changed in app
+        rcData[5] = serialRcValue[5];
+        prevAux2Data = rcData[5];
+        launchCalledHover = false;
+      }
      rcData[6] = serialRcValue[6];
      rcData[7] = serialRcValue[7];
 #endif
@@ -1142,9 +1212,9 @@ void loop () {
       errorAngleI[ROLL] = 0; errorAngleI[PITCH] = 0;
       if (conf.activate[BOXARM] > 0) {             // Arming/Disarming via ARM BOX
         if ( rcOptions[BOXARM] && f.OK_TO_ARM ) 
-	go_arm();
+	          go_arm();
         else if (f.ARMED) 
-	go_disarm();
+	          go_disarm();
       }
     }
     if(rcDelayCommand == 20) {
@@ -1291,11 +1361,18 @@ void loop () {
         if (rcOptions[BOXBARO]) {
             if (!f.BARO_MODE) {
               f.BARO_MODE = 1;
-              AltHold = EstAlt;
+              AltHold = EstAlt; // Rewriting AltHold defined in old Baylor Launch Code
               initialThrottleHold = rcCommand[THROTTLE];
               errorAltitudeI = 0;
               BaroPID=0;
             }
+        } else if (launchCalledHover) {  // Baylor Added Additional AltHold Enable
+          if (!f.BARO_MODE) {
+            f.BARO_MODE = 1;
+            initialThrottleHold = launchThrot;
+            errorAltitudeI = 0;
+            BaroPID = 0;
+          }          
         } else {
             f.BARO_MODE = 0;
         }
@@ -1576,11 +1653,13 @@ void loop () {
   writeServos();
   writeMotors();
 }
-/**************************** Baylor University Routines ****************************/
+
+/************************ Baylor University Functions ************************************/
+void go_launch() {
+  isLaunch = true;
+}
 
 void turnOnIRLED(){
   isFiring = true;
 }
-
-/************************** Baylor University Routines End **************************/
-
+/************************ End Baylor Functions *******************************************/
