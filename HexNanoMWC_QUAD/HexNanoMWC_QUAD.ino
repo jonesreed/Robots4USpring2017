@@ -8,21 +8,24 @@ March  2013     V2.2
  any later version. see <http://www.gnu.org/licenses/>
 */
 
-
 #include <avr/io.h>
 
 #include "config.h"
 #include "def.h"
-#include <IRremote.h>
-#include <IRremoteInt.h>
 
-
+// BAYLOR includes
+#include "IRremote.h"
+#include "IRremoteInt.h"
 
 #include <avr/pgmspace.h>
 #define  VERSION  220
 
 #if defined(HEX_NANO)
 volatile uint16_t serialRcValue[RC_CHANS] = {1502, 1502, 1502, 1502, 1502, 1502, 1502, 1502}; 
+float alpha = 0.95;
+uint8_t paramList[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int16_t absolutedAccZ = 0;
+uint8_t flightState = 0;
 #endif
 
 /**************************** Baylor University Variables ****************************/
@@ -59,6 +62,7 @@ unsigned long blinkTime = 175;
 int redLEDstate = 0;
 int firstTimeBlink = 1;
 /************************** Baylor University Variables End **************************/
+
 /*********** RC alias *****************/
 enum rc {
   ROLL,
@@ -277,6 +281,11 @@ static int16_t  vario = 0;              // variometer in cm/s
 
 static int16_t  debug[4];
 static int16_t  sonarAlt; //to think about the unit
+
+//-------------------------------------------------------------------------
+// Calibration flag value
+uint8_t calibration_flag;
+//-------------------------------------------------------------------------
 
 struct flags_struct {
   uint8_t OK_TO_ARM :1 ;
@@ -731,116 +740,141 @@ void annexCode() { // this code is excetuted at each loop and won't interfere wi
   }
 }
 
-void setup() {
+void system_init(void)
+{	
   #if !defined(GPS_PROMINI)
-    SerialOpen(0,SERIAL0_COM_SPEED);
+	SerialOpen(0,SERIAL0_COM_SPEED);
     #if defined(PROMICRO)
-      SerialOpen(1,SERIAL1_COM_SPEED);
+	SerialOpen(1,SERIAL1_COM_SPEED);
     #endif
     #if defined(MEGA)
-      SerialOpen(1,SERIAL1_COM_SPEED);
-      SerialOpen(2,SERIAL2_COM_SPEED);
-      SerialOpen(3,SERIAL3_COM_SPEED);
+	SerialOpen(1,SERIAL1_COM_SPEED);
+	SerialOpen(2,SERIAL2_COM_SPEED);
+	SerialOpen(3,SERIAL3_COM_SPEED);
     #endif
   #endif
-  LEDPIN_PINMODE;
-  POWERPIN_PINMODE;
-  BUZZERPIN_PINMODE;
-  STABLEPIN_PINMODE;
-  POWERPIN_OFF;
-  initOutput();
+	LEDPIN_PINMODE;
+	POWERPIN_PINMODE;
+	BUZZERPIN_PINMODE;
+	STABLEPIN_PINMODE;
+	POWERPIN_OFF;
+	initOutput();
   #ifdef MULTIPLE_CONFIGURATION_PROFILES
-    for(global_conf.currentSet=0; global_conf.currentSet<3; global_conf.currentSet++) {  // check all settings integrity
-      readEEPROM();
-    }
+	for(global_conf.currentSet=0; global_conf.currentSet<3; global_conf.currentSet++) {  // check all settings integrity
+		readEEPROM();
+	}
   #else
-    global_conf.currentSet=0;
-    readEEPROM();
+	global_conf.currentSet=0;
+	readEEPROM();
   #endif
-  readGlobalSet();
-  readEEPROM();                                    // load current setting data
-  blinkLED(2,40,global_conf.currentSet+1);          
-  configureReceiver();
+	readGlobalSet();
+	readEEPROM(); 								   // load current setting data
+	blinkLED(2,40,global_conf.currentSet+1);			
+	configureReceiver();
   #if defined (PILOTLAMP) 
-    PL_INIT;
+	PL_INIT;
   #endif
   #if defined(OPENLRSv2MULTI)
-    initOpenLRS();
+	initOpenLRS();
   #endif
-  initSensors();
+	initSensors();
   #if defined(I2C_GPS) || defined(GPS_SERIAL) || defined(GPS_FROM_OSD)
-    GPS_set_pids();
+	GPS_set_pids();
   #endif
-  previousTime = micros();
+	previousTime = micros();
   #if defined(GIMBAL)
-   calibratingA = 512;
+	calibratingA = 512;
   #endif
-  calibratingG = 512;
-  calibratingB = 200;  // 10 seconds init_delay + 200 * 25 ms = 15 seconds before ground pressure settles
+	calibratingG = 512;
+	calibratingB = 200;  // 10 seconds init_delay + 200 * 25 ms = 15 seconds before ground pressure settles
   #if defined(POWERMETER)
-    for(uint8_t i=0;i<=PMOTOR_SUM;i++)
-      pMeter[i]=0;
+	for(uint8_t i=0;i<=PMOTOR_SUM;i++)
+	pMeter[i]=0;
   #endif
-  /************************************/
+	/************************************/
   #if defined(GPS_SERIAL)
-    GPS_SerialInit();
-    for(uint8_t i=0;i<=5;i++){
-      GPS_NewData(); 
-      LEDPIN_ON
-      delay(20);
-      LEDPIN_OFF
-      delay(80);
-    }
-    if(!GPS_Present){
-      SerialEnd(GPS_SERIAL);
-      SerialOpen(0,SERIAL0_COM_SPEED);
-    }
+	GPS_SerialInit();
+	for(uint8_t i=0;i<=5;i++){
+	GPS_NewData(); 
+	LEDPIN_ON
+	delay(20);
+	LEDPIN_OFF
+	delay(80);
+	}
+	if(!GPS_Present){
+	SerialEnd(GPS_SERIAL);
+	SerialOpen(0,SERIAL0_COM_SPEED);
+	}
     #if !defined(GPS_PROMINI)
-      GPS_Present = 1;
+	GPS_Present = 1;
     #endif
-    GPS_Enable = GPS_Present;    
+	GPS_Enable = GPS_Present;	 
   #endif
-  /************************************/
- 
+	/************************************/
+	 
   #if defined(I2C_GPS) || defined(TINY_GPS) || defined(GPS_FROM_OSD)
-   GPS_Enable = 1;
+	GPS_Enable = 1;
   #endif
-  
+	  
   #if defined(LCD_ETPP) || defined(LCD_LCD03) || defined(OLED_I2C_128x64) || defined(LCD_TELEMETRY_STEP)
-    initLCD();
+	initLCD();
   #endif
   #ifdef LCD_TELEMETRY_DEBUG
-    telemetry_auto = 1;
+	telemetry_auto = 1;
   #endif
   #ifdef LCD_CONF_DEBUG
-    configurationLoop();
+	configurationLoop();
   #endif
   #ifdef LANDING_LIGHTS_DDR
-    init_landing_lights();
+	init_landing_lights();
   #endif
-  ADCSRA |= _BV(ADPS2) ; ADCSRA &= ~_BV(ADPS1); ADCSRA &= ~_BV(ADPS0); // this speeds up analogRead without loosing too much resolution: http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1208715493/11
+	ADCSRA |= _BV(ADPS2) ; ADCSRA &= ~_BV(ADPS1); ADCSRA &= ~_BV(ADPS0); // this speeds up analogRead without loosing too much resolution: http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1208715493/11
   #if defined(LED_FLASHER)
-    init_led_flasher();
-    led_flasher_set_sequence(LED_FLASHER_SEQUENCE);
+	init_led_flasher();
+	led_flasher_set_sequence(LED_FLASHER_SEQUENCE);
   #endif
-  f.SMALL_ANGLES_25=1; // important for gyro only conf
+	f.SMALL_ANGLES_25=1; // important for gyro only conf
   #ifdef LOG_PERMANENT
-    // read last stored set
-    readPLog();
-    plog.lifetime += plog.armed_time / 1000000;
-    plog.start++;         // #powercycle/reset/initialize events
-    // dump plog data to terminal
+	// read last stored set
+	readPLog();
+	plog.lifetime += plog.armed_time / 1000000;
+	plog.start++;		  // #powercycle/reset/initialize events
+	// dump plog data to terminal
     #ifdef LOG_PERMANENT_SHOW_AT_STARTUP
-      dumpPLog(0);
+	dumpPLog(0);
     #endif
-    plog.armed_time = 0;   // lifetime in seconds
-    //plog.running = 0;       // toggle on arm & disarm to monitor for clean shutdown vs. powercut
+	plog.armed_time = 0;   // lifetime in seconds
+	//plog.running = 0; 	  // toggle on arm & disarm to monitor for clean shutdown vs. powercut
   #endif
-
-  debugmsg_append_str("initialization completed\n");
+	
+	 debugmsg_append_str("initialization completed\n");
 }
 
+
+void setup()
+{
+  	//------------------------------------------------------------------
+        calibration_flag = 0;
+	//------------------------------------------------------------------
+	system_init();
+}
+
+//------------------------------------------------------------------
+void calibration_fun(void)
+{
+	calibratingG = 512;
+  #if GPS 
+	GPS_reset_home_position();
+  #endif
+  #if BARO
+	calibratingB = 10;  // calibrate baro to new ground level (10 * 25 ms = ~250 ms non blocking)
+  #endif
+}
+//------------------------------------------------------------------
+
+// Unlock function
 void go_arm() {
+
   if(calibratingG == 0 && f.ACC_CALIBRATED 
   #if defined(FAILSAFE)
    // && failsafeCnt < 2
@@ -868,7 +902,16 @@ void go_arm() {
     blinkLED(2,255,1);
     alarmArray[8] = 1;
   }
+  
+  //------------------------------------------------------------------
+	if (calibration_flag == 0) {
+		calibration_flag = 1;
+		calibration_fun();
+	}
+//------------------------------------------------------------------
 }
+
+// Unlock function
 void go_disarm() {
   if (f.ARMED) {
     f.ARMED = 0;
@@ -906,10 +949,9 @@ void servos2Neutral() {
 
 // ******** Main Loop *********
 void loop () {
-
-  /***********************************************************************************/
-  /*********************************** BAYLOR Main ***********************************/
-  /***********************************************************************************/
+/***********************************************************************************/
+/*********************************** BAYLOR Main ***********************************/
+/***********************************************************************************/
 
   // Code to sense IR shots
   irSensorValue = analogRead(A4);
@@ -996,7 +1038,7 @@ void loop () {
         }
      }
 
-    /*// Code to enable IR LED to 'Shoot'
+    // Code to enable IR LED to 'Shoot'
     if(isFiring == true){
       if(oncePerPress == 0){
         irsend.sendRaw( rawCode, sizeof(rawCode) / sizeof(rawCode[0]), 38); // Tells the IR to send signal rawCode with frequency of 38 kHz
@@ -1009,20 +1051,12 @@ void loop () {
       isFiring = false;
       oncePerPress = 0;
     }
-    */
+    
 
 
   /***********************************************************************************/
   /********************************** BAYLOR Main End ********************************/
   /***********************************************************************************/
-
-
-
-
-
-
-
-  
   static uint8_t rcDelayCommand; // this indicates the number of time (multiple of RC measurement at 50Hz) the sticks must be maintained to run or switch off motors
   static uint8_t rcSticks;       // this hold sticks position for command combos
   uint8_t axis,i;
@@ -1107,7 +1141,10 @@ void loop () {
       errorGyroI[ROLL] = 0; errorGyroI[PITCH] = 0; errorGyroI[YAW] = 0;
       errorAngleI[ROLL] = 0; errorAngleI[PITCH] = 0;
       if (conf.activate[BOXARM] > 0) {             // Arming/Disarming via ARM BOX
-        if ( rcOptions[BOXARM] && f.OK_TO_ARM ) go_arm(); else if (f.ARMED) go_disarm();
+        if ( rcOptions[BOXARM] && f.OK_TO_ARM ) 
+	go_arm();
+        else if (f.ARMED) 
+	go_disarm();
       }
     }
     if(rcDelayCommand == 20) {
@@ -1121,13 +1158,9 @@ void loop () {
       } else {                        // actions during not armed
         i=0;
         if (rcSticks == THR_LO + YAW_LO + PIT_LO + ROL_CE) {    // GYRO calibration
-          calibratingG=512;
-          #if GPS 
-            GPS_reset_home_position();
-          #endif
-          #if BARO
-            calibratingB=10;  // calibrate baro to new ground level (10 * 25 ms = ~250 ms non blocking)
-          #endif
+	//------------------------------------------------------------
+		calibration_fun();
+	//------------------------------------------------------------
         }
         #if defined(INFLIGHT_ACC_CALIBRATION)  
          else if (rcSticks == THR_LO + YAW_LO + PIT_HI + ROL_HI) {    // Inflight ACC calibration START/STOP
@@ -1358,7 +1391,7 @@ void loop () {
       case 0:
         taskOrder++;
         #if MAG
-          if (Mag_getADC()) break; // max 350 µs (HMC5883) // only break when we actually did something
+          if (Mag_getADC()) break; // max 350 碌s (HMC5883) // only break when we actually did something
         #endif
       case 1:
         taskOrder++;
@@ -1543,13 +1576,11 @@ void loop () {
   writeServos();
   writeMotors();
 }
-
 /**************************** Baylor University Routines ****************************/
 
 void turnOnIRLED(){
   isFiring = true;
 }
 
-
-
 /************************** Baylor University Routines End **************************/
+

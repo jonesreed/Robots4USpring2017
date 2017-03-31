@@ -5,7 +5,6 @@ static int16_t  i2c_errors_count_old = 0;
 
 static uint8_t SequenceActive[5]={0,0,0,0,0};
 
-
 #if defined(BUZZER)
   uint8_t isBuzzerON() { return resourceIsOn[1]; } // returns true while buzzer is buzzing; returns 0 for silent periods
 #else
@@ -89,12 +88,8 @@ void alarmHandler(){
     else alarmArray[6] = 4;
   #endif
   
-  if (i2c_errors_count > i2c_errors_count_old+100 || i2c_errors_count < -1) {
-    alarmArray[9] = 1;
-  }
-  else {
-    alarmArray[9] = 0;
-  }
+  if (i2c_errors_count > i2c_errors_count_old+100 || i2c_errors_count < -1) alarmArray[9] = 1;
+  else alarmArray[9] = 0;
    
   alarmPatternComposer();
 }

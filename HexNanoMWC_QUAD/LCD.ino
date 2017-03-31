@@ -12,7 +12,6 @@ static char line1[17],line2[17];
   static uint8_t lnr = 0;
 #endif
 
-
 char digit10000(uint16_t v) {return '0' + v / 10000;}
 char digit1000(uint16_t v) {return '0' + v / 1000 - (v/10000) * 10;}
 char digit100(uint16_t v) {return '0' + v / 100 - (v/1000) * 10;}
