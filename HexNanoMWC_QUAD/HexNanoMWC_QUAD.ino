@@ -993,15 +993,18 @@ void loop () {
           RGB_RED_OFF;
           RGB_BLUE_ON;
           shouldBeBlinking = false;
+          firstHitDeg();
           break;
         case 2:
           RGB_GREEN_OFF;
           RGB_RED_ON;
           RGB_BLUE_OFF;
           shouldBeBlinking = false;
+          secondHitDeg();
           break;
         case 3:
           shouldBeBlinking = true;
+          thirdHitDeg();
           break;
         /*case 4:
           RGB_GREEN_OFF;
@@ -1595,7 +1598,19 @@ void loop () {
 
 void turnOnIRLED(){
   isFiring = true;
-  hits++;
+  //hits++;
+}
+
+void firstHitDeg(){
+  
+}
+
+void secondHitDeg(){
+  
+}
+
+void thirdHitDeg(){
+  
 }
 
 /************************** Baylor University Routines End **************************/
