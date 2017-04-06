@@ -1,7 +1,6 @@
 #include <avr/eeprom.h>
 
 
-
 uint8_t calculate_sum(uint8_t *cb , uint8_t siz) {
   uint8_t sum=0x55;  // checksum init
   while(--siz) sum += *cb++;  // calculate checksum (without checksum byte)
@@ -124,7 +123,7 @@ void LoadDefaults() {
   for(uint8_t i=0;i<CHECKBOXITEMS;i++) {conf.activate[i] = 0;}
   
   conf.activate[BOXHORIZON]  = 1 << 0 | 1 << 1 | 1 << 2;
-  conf.activate[BOXHEADFREE] = 1 << 2;
+  //conf.activate[BOXHEADFREE] = 1 << 2;
   conf.activate[BOXBARO]     = 1 << 5;
   
   conf.angleTrim[0] = 0; conf.angleTrim[1] = 0;

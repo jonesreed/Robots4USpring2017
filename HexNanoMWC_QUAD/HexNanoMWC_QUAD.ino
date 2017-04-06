@@ -8,7 +8,6 @@ March  2013     V2.2
  any later version. see <http://www.gnu.org/licenses/>
 */
 
-
 #include <avr/io.h>
 
 #include "config.h"
@@ -20,24 +19,71 @@ March  2013     V2.2
 
 #if defined(HEX_NANO)
 volatile uint16_t serialRcValue[RC_CHANS] = {1502, 1502, 1502, 1502, 1502, 1502, 1502, 1502}; 
+float alpha = 0.95;
+uint8_t paramList[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int16_t absolutedAccZ = 0;
+uint8_t flightState = 0;
 #endif
 
-/**************************** Baylor University Variables ****************************/
+/********************************* Baylor University Variables **********************************/
+
+//Launch
+
+boolean isLaunch = false;                   // Set if need to launch
+unsigned long launchTime = 0;               // Store time launch activated
+int curThrot = 0;                           // Throttle to detect change
+int startThrottle = 1000;                   // Starting place for Throttle
+int defStartThrottle = startThrottle;       // To set it back later
+int incThrottle = 1;                        // How much to increment throttle
+int accToReach = -1000;                     // Lower or Negative Means faster
+boolean accReached = false;                 // Has the acceleration been reached
+unsigned long timeToLaunch = 1200000;       // Time in microseconds
+unsigned long timeToStable = 500000;        // Time in microseconds
+int launchThrot = 1375;                     // Throttle during launch best 1350,-50
+int stableThrot = launchThrot - 10;         // Throttle to stabalize before altitude is maintained
+int altAdd = 250;                           // Altitude to Add
+int16_t prevAux2Data = 0;                   // Store Altitude Hold from Aux2 and only change if a change was made in the app.
+boolean launchCalledHover = false;          // Variable to call hovermode
+
+const int RGBredPin = 4;                    // Digital pin of Red RGB LED
+const int RGBbluePin = 12;                  // Digital pin of Blue RGB LED
+const int RGBgreenPin = 8;                  // Digital pin of Green RGB LED
 
 // Fire
 
-boolean isFiring = false;          // Set if it is firing
-
-
+int firstTimeIR = 1;                        // Variable to make the IR LED turn on once per press
+unsigned long IROn;                         // Variable which holds the time when IR LED is turned on
+unsigned long IRCurrentTimeON;              // Variable which holds the current time in IR loop
+unsigned long IRDifferenceON;               // Variable which holds the difference in time of the current time minus on time
+unsigned long IRTime = 1;                   // Amount of time IR will Blink on and off ***Curently Set to 1 ms per press***
+boolean isFiring = false;                   // Boolean to switch when IR should be turned on or off from app button press
 
 // Detection of IR light
 
-boolean vulnerable = true;         // acts as a shield after being hit
-unsigned long invulnerabilityTime;
-uint8_t hits = 0; // counter for the number of hits recieved by a drone
-int irSensorValue;
+boolean vulnerable = true;                  // Acts as a shield after being hit 
+uint8_t hits = 0;                           // Counter for the number of hits recieved by a drone
+int irSensorValue;                          // Stores analog value passing through IR reciever
+unsigned long timeWhenHit = 0;              // Stores current time when a hit is detected
+unsigned long currentTimeForHits = 0;       // Stores current time in detection loop
+unsigned long difInTime = 0;                // Difference in time between time when hit and current time
+unsigned long invulnerabilityTime = 1000;   // After drone is hit, will be invunerable ***Currently set to 1s***
 
-/************************** Baylor University Variables End **************************/
+// Red RGB LED blinking
+// Since the main loop is dependent on time the blinking of the LED is done by checking timings instead of delays
+
+boolean shouldBeBlinking = false;           // True when drone has been hit 3 times and the RGB should be blinking Red, O.W. false
+unsigned long redBlinkOn;                   // Time when the Red LED turns on to blink
+unsigned long redBlinkOff;                  // Time when the Red LED turns off to blink
+unsigned long redBlinkCurrentTimeOFF;       // Current time when Red LED is off
+unsigned long redBlinkCurrentTimeON;        // Current time when Red LED is on
+unsigned long redBlinkDifferenceON;         // Difference between Red LED on and current time On
+unsigned long redBlinkDifferenceOFF;        // Difference between Red LED off and current time off
+unsigned long blinkTime = 5000;             // Amount of time Blinking is on and off ***Currently set to 5s***  NOTE: this time has not been consistent.
+int redLEDstate = 0;                        // Current state of Red LED 0 is off 1 is O
+int firstTimeBlink = 1;                     // True, 1, when the LED is not currently blinking, OW false 0
+
+ /******************************** End Baylor Variables *****************************************/
+
 /*********** RC alias *****************/
 enum rc {
   ROLL,
@@ -256,6 +302,11 @@ static int16_t  vario = 0;              // variometer in cm/s
 
 static int16_t  debug[4];
 static int16_t  sonarAlt; //to think about the unit
+
+//-------------------------------------------------------------------------
+// Calibration flag value
+uint8_t calibration_flag;
+//-------------------------------------------------------------------------
 
 struct flags_struct {
   uint8_t OK_TO_ARM :1 ;
@@ -710,116 +761,154 @@ void annexCode() { // this code is excetuted at each loop and won't interfere wi
   }
 }
 
-void setup() {
+void system_init(void)
+{	
   #if !defined(GPS_PROMINI)
-    SerialOpen(0,SERIAL0_COM_SPEED);
+	SerialOpen(0,SERIAL0_COM_SPEED);
     #if defined(PROMICRO)
-      SerialOpen(1,SERIAL1_COM_SPEED);
+	SerialOpen(1,SERIAL1_COM_SPEED);
     #endif
     #if defined(MEGA)
-      SerialOpen(1,SERIAL1_COM_SPEED);
-      SerialOpen(2,SERIAL2_COM_SPEED);
-      SerialOpen(3,SERIAL3_COM_SPEED);
+	SerialOpen(1,SERIAL1_COM_SPEED);
+	SerialOpen(2,SERIAL2_COM_SPEED);
+	SerialOpen(3,SERIAL3_COM_SPEED);
     #endif
   #endif
-  LEDPIN_PINMODE;
-  POWERPIN_PINMODE;
-  BUZZERPIN_PINMODE;
-  STABLEPIN_PINMODE;
-  POWERPIN_OFF;
-  initOutput();
+	LEDPIN_PINMODE;
+	POWERPIN_PINMODE;
+	BUZZERPIN_PINMODE;
+	STABLEPIN_PINMODE;
+	POWERPIN_OFF;
+	initOutput();
   #ifdef MULTIPLE_CONFIGURATION_PROFILES
-    for(global_conf.currentSet=0; global_conf.currentSet<3; global_conf.currentSet++) {  // check all settings integrity
-      readEEPROM();
-    }
+	for(global_conf.currentSet=0; global_conf.currentSet<3; global_conf.currentSet++) {  // check all settings integrity
+		readEEPROM();
+	}
   #else
-    global_conf.currentSet=0;
-    readEEPROM();
+	global_conf.currentSet=0;
+	readEEPROM();
   #endif
-  readGlobalSet();
-  readEEPROM();                                    // load current setting data
-  blinkLED(2,40,global_conf.currentSet+1);          
-  configureReceiver();
+	readGlobalSet();
+	readEEPROM(); 								   // load current setting data
+	blinkLED(2,40,global_conf.currentSet+1);			
+	configureReceiver();
   #if defined (PILOTLAMP) 
-    PL_INIT;
+	PL_INIT;
   #endif
   #if defined(OPENLRSv2MULTI)
-    initOpenLRS();
+	initOpenLRS();
   #endif
-  initSensors();
+	initSensors();
   #if defined(I2C_GPS) || defined(GPS_SERIAL) || defined(GPS_FROM_OSD)
-    GPS_set_pids();
+	GPS_set_pids();
   #endif
-  previousTime = micros();
+	previousTime = micros();
   #if defined(GIMBAL)
-   calibratingA = 512;
+	calibratingA = 512;
   #endif
-  calibratingG = 512;
-  calibratingB = 200;  // 10 seconds init_delay + 200 * 25 ms = 15 seconds before ground pressure settles
+	calibratingG = 512;
+	calibratingB = 200;  // 10 seconds init_delay + 200 * 25 ms = 15 seconds before ground pressure settles
   #if defined(POWERMETER)
-    for(uint8_t i=0;i<=PMOTOR_SUM;i++)
-      pMeter[i]=0;
+	for(uint8_t i=0;i<=PMOTOR_SUM;i++)
+	pMeter[i]=0;
   #endif
-  /************************************/
+	/************************************/
   #if defined(GPS_SERIAL)
-    GPS_SerialInit();
-    for(uint8_t i=0;i<=5;i++){
-      GPS_NewData(); 
-      LEDPIN_ON
-      delay(20);
-      LEDPIN_OFF
-      delay(80);
-    }
-    if(!GPS_Present){
-      SerialEnd(GPS_SERIAL);
-      SerialOpen(0,SERIAL0_COM_SPEED);
-    }
+	GPS_SerialInit();
+	for(uint8_t i=0;i<=5;i++){
+	GPS_NewData(); 
+	LEDPIN_ON
+	delay(20);
+	LEDPIN_OFF
+	delay(80);
+	}
+	if(!GPS_Present){
+	SerialEnd(GPS_SERIAL);
+	SerialOpen(0,SERIAL0_COM_SPEED);
+	}
     #if !defined(GPS_PROMINI)
-      GPS_Present = 1;
+	GPS_Present = 1;
     #endif
-    GPS_Enable = GPS_Present;    
+	GPS_Enable = GPS_Present;	 
   #endif
-  /************************************/
- 
+	/************************************/
+	 
   #if defined(I2C_GPS) || defined(TINY_GPS) || defined(GPS_FROM_OSD)
-   GPS_Enable = 1;
+	GPS_Enable = 1;
   #endif
-  
+	  
   #if defined(LCD_ETPP) || defined(LCD_LCD03) || defined(OLED_I2C_128x64) || defined(LCD_TELEMETRY_STEP)
-    initLCD();
+	initLCD();
   #endif
   #ifdef LCD_TELEMETRY_DEBUG
-    telemetry_auto = 1;
+	telemetry_auto = 1;
   #endif
   #ifdef LCD_CONF_DEBUG
-    configurationLoop();
+	configurationLoop();
   #endif
   #ifdef LANDING_LIGHTS_DDR
-    init_landing_lights();
+	init_landing_lights();
   #endif
-  ADCSRA |= _BV(ADPS2) ; ADCSRA &= ~_BV(ADPS1); ADCSRA &= ~_BV(ADPS0); // this speeds up analogRead without loosing too much resolution: http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1208715493/11
+	ADCSRA |= _BV(ADPS2) ; ADCSRA &= ~_BV(ADPS1); ADCSRA &= ~_BV(ADPS0); // this speeds up analogRead without loosing too much resolution: http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1208715493/11
   #if defined(LED_FLASHER)
-    init_led_flasher();
-    led_flasher_set_sequence(LED_FLASHER_SEQUENCE);
+	init_led_flasher();
+	led_flasher_set_sequence(LED_FLASHER_SEQUENCE);
   #endif
-  f.SMALL_ANGLES_25=1; // important for gyro only conf
+	f.SMALL_ANGLES_25=1; // important for gyro only conf
   #ifdef LOG_PERMANENT
-    // read last stored set
-    readPLog();
-    plog.lifetime += plog.armed_time / 1000000;
-    plog.start++;         // #powercycle/reset/initialize events
-    // dump plog data to terminal
+	// read last stored set
+	readPLog();
+	plog.lifetime += plog.armed_time / 1000000;
+	plog.start++;		  // #powercycle/reset/initialize events
+	// dump plog data to terminal
     #ifdef LOG_PERMANENT_SHOW_AT_STARTUP
-      dumpPLog(0);
+	dumpPLog(0);
     #endif
-    plog.armed_time = 0;   // lifetime in seconds
-    //plog.running = 0;       // toggle on arm & disarm to monitor for clean shutdown vs. powercut
+	plog.armed_time = 0;   // lifetime in seconds
+	//plog.running = 0; 	  // toggle on arm & disarm to monitor for clean shutdown vs. powercut
   #endif
-
-  debugmsg_append_str("initialization completed\n");
+	
+	 debugmsg_append_str("initialization completed\n");
 }
 
+
+void setup()
+{
+ 
+  /****************************** Baylor University Setup ******************************/
+  /****************************** End Baylor Setup *************************************/
+  	//------------------------------------------------------------------
+        calibration_flag = 0;
+	//------------------------------------------------------------------
+	system_init();
+
+  //Sets RGB LED and IR LED pins to OUTPUTS
+  RGB_RED;    
+  RGB_BLUE;
+  RGB_GREEN;
+  IR_PIN;
+  //Sets IR SENSOR pin to INPUT
+  IR_SENSOR;
+  // Configure Timer/Counter0 for 38 kHz
+  TIMER_CONFIG_KHZ(38);
+}
+
+//------------------------------------------------------------------
+void calibration_fun(void)
+{
+	calibratingG = 512;
+  #if GPS 
+	GPS_reset_home_position();
+  #endif
+  #if BARO
+	calibratingB = 10;  // calibrate baro to new ground level (10 * 25 ms = ~250 ms non blocking)
+  #endif
+}
+//------------------------------------------------------------------
+
+// Unlock function
 void go_arm() {
+
   if(calibratingG == 0 && f.ACC_CALIBRATED 
   #if defined(FAILSAFE)
    // && failsafeCnt < 2
@@ -847,8 +936,22 @@ void go_arm() {
     blinkLED(2,255,1);
     alarmArray[8] = 1;
   }
+  
+  //------------------------------------------------------------------
+	if (calibration_flag == 0) {
+		calibration_flag = 1;
+		calibration_fun();
+	}
+//------------------------------------------------------------------
 }
+
+/***************************** Baylor Modified Disarm Function ***********************************/
+// Unlock function
 void go_disarm() {
+  isLaunch = false;
+  launchCalledHover = false;
+  accReached = false;
+  rcData[THROTTLE] = MINTHROTTLE;
   if (f.ARMED) {
     f.ARMED = 0;
     #ifdef LOG_PERMANENT
@@ -862,6 +965,8 @@ void go_disarm() {
     #endif
   }
 }
+/***************************** End Baylor Disarm *************************************************/
+
 void servos2Neutral() {
   #ifdef TRI
     servo[5] = 1500; // we center the yaw servo in conf mode
@@ -886,57 +991,184 @@ void servos2Neutral() {
 // ******** Main Loop *********
 void loop () {
 
-  /***********************************************************************************/
-  /*********************************** Edited Main ***********************************/
-  /***********************************************************************************/
+/******************************** Baylor Modified Main Loop ***********************************/
+  // Handle Launch
+  
+  /*if (f.ARMED && isLaunch)
+  {
+    if (rcData[THROTTLE] < launchThrot)
+    {
+      rcData[THROTTLE] = startThrottle;
 
-  // Code to sense IR shots
-  irSensorValue = analogRead(A4);
-  vulnerable = true;
-  if( irSensorValue < 0 && vulnerable == true){
+      if (startThrottle <= 2000)
+      {
+        startThrottle += incThrottle;     
+      }
+    }
+    else
+    {
+      accReached = true;
+      AltHold = EstAlt + altAdd;
+    }
+    
+    if (accReached)
+    {
+      curThrot = rcData[THROTTLE];
+      startThrottle = defStartThrottle;
+      isLaunch = false;
+      accReached = false;
+      launchCalledHover = true;   
+    }       
+  }*/
+
+  // Handle Launch
+  if (f.ARMED && isLaunch) {
+
+    //Reach Desired Acceleration
+    if (!accReached) {
+
+      if (rcData[THROTTLE] < launchThrot) {
+        rcData[THROTTLE] = startThrottle;
+        if (startThrottle <= 2000) {
+          startThrottle += incThrottle;
+        }
+      } else {
+        accReached = true;
+        launchTime = currentTime;
+        AltHold = EstAlt + altAdd;
+      }
+    }
+    //Continue for a set amount of time once Acceleration is reached
+    if (accReached /*&& ((currentTime-launchTime) < timeToLaunch)*/) {
+
+      if ((currentTime - launchTime) < timeToLaunch) {
+
+        rcData[THROTTLE] = startThrottle;
+
+      } else if ((currentTime - launchTime) < (timeToLaunch + timeToStable)) {
+
+        rcData[THROTTLE] = stableThrot;
+
+      } else {
+        //rcData[THROTTLE] = MINTHROTTLE;
+        rcData[THROTTLE] = stableThrot;
+        curThrot = rcData[THROTTLE];
+        startThrottle = defStartThrottle;
+        isLaunch = false;
+        accReached = false;
+        launchCalledHover = true;
+      }
+    }
+
+  }
+    // Code to sense IR shots
+  irSensorValue = analogRead(A5);
+  if( irSensorValue == 0 && vulnerable == true){
     hits++;
     vulnerable = false;
-    //I want to chekc mastClk time
+    timeWhenHit = millis();
   }
-  if( invulnerabilityTime >= 5){ /*time since last being hit is >= 5seconds */
+  currentTimeForHits = millis();
+  difInTime = currentTimeForHits - timeWhenHit;
+  if( difInTime >= invulnerabilityTime ){ //time since last being hit is >= 5seconds 
     vulnerable = true;
   }
+  else{
+    vulnerable = false;
+  }
 
+
+  
   // Code to turn on RBG Health indicator
   switch (hits){
         case 0:
           RGB_GREEN_ON;
+          RGB_RED_OFF;
+          RGB_BLUE_OFF;
+          shouldBeBlinking = false;
           break;
         case 1:
-          greenBlink();
+          RGB_GREEN_OFF;
+          RGB_RED_OFF;
+          RGB_BLUE_ON;
+          shouldBeBlinking = false;
+          firstHitDeg();
           break;
         case 2:
-          yellowBlink();
+          RGB_GREEN_OFF;
+          RGB_RED_ON;
+          RGB_BLUE_OFF;
+          shouldBeBlinking = false;
+          secondHitDeg();
           break;
         case 3:
-          redBlink();
-          delay(5000);
-          hits = 0;
+          shouldBeBlinking = true;
+          thirdHitDeg();
           break;
+        /*case 4:
+          RGB_GREEN_OFF;
+          RGB_RED_ON;
+          RGB_BLUE_ON;
+          shouldBeBlinking = false;
+          break;*/
         default:
-          RGB_GREEN_ON;
+          hits = 0;
+          firstTimeBlink = 1;
+          shouldBeBlinking = false;
           break;
       }
 
+      if(shouldBeBlinking){
+        if(redLEDstate == 0 && firstTimeBlink == 1){
+          RGB_GREEN_OFF;
+          RGB_RED_ON;
+          RGB_BLUE_OFF;
+          redLEDstate = 1;
+          firstTimeBlink = 0;
+          redBlinkOn = millis();
+        }
+        redBlinkCurrentTimeON = millis();
+        redBlinkDifferenceON = redBlinkCurrentTimeON - redBlinkOn;
+      
+        if(redBlinkDifferenceON >= blinkTime && redLEDstate == 1){
+          RGB_GREEN_OFF;
+          RGB_RED_OFF;
+          RGB_BLUE_OFF;
+          redLEDstate = 0;
+          redBlinkOff = millis();
+        }
+        redBlinkCurrentTimeOFF = millis();
+        redBlinkDifferenceOFF = redBlinkCurrentTimeOFF - redBlinkOff;
+      
+        if(redBlinkDifferenceOFF >= blinkTime && redLEDstate == 0){
+          RGB_GREEN_OFF;
+          RGB_RED_ON;
+          RGB_BLUE_OFF;
+          redLEDstate = 1;
+          redBlinkOn = millis();
+        }
+     }
+
     // Code to enable IR LED to 'Shoot'
-
-
-
-  /***********************************************************************************/
-  /************************************ Main End *************************************/
-  /***********************************************************************************/
-
-
-
-
-
-
-
+    if(isFiring == true){
+      if(firstTimeIR == 1){
+          TIMER_CONFIG_KHZ(38);
+          firstTimeIR = 0;
+          TIMER_ENABLE_PWM;
+          IROn = millis(); 
+        }
+        IRCurrentTimeON = millis();
+        IRDifferenceON = IRCurrentTimeON - IROn;
+      
+        if(IRDifferenceON >= IRTime){
+          TIMER_DISABLE_PWM;
+          isFiring = false;
+          firstTimeIR = 1;
+        }
+    }
+  
+    
+  /****************************** End Baylor Loop *************************************/
   
   static uint8_t rcDelayCommand; // this indicates the number of time (multiple of RC measurement at 50Hz) the sticks must be maintained to run or switch off motors
   static uint8_t rcSticks;       // this hold sticks position for command combos
@@ -972,9 +1204,21 @@ void loop () {
      rcData[0] = serialRcValue[0];
      rcData[1] = serialRcValue[1];
      rcData[2] = serialRcValue[2];
-     rcData[3] = serialRcValue[3];
-     rcData[4] = serialRcValue[4];
-     rcData[5] = serialRcValue[5];
+     //Baylor Launch Throttle Disabled
+     if (!isLaunch) {
+        if (curThrot < serialRcValue[3]) {
+          curThrot = 0;                 //Reset cut throttle
+          launchCalledHover = false;    // Disable Launch Hover
+          rcData[3] = serialRcValue[3];  //Set Throttle if it change from serial
+        }
+      }
+      //rcData[3] = serialRcValue[3];
+      rcData[4] = serialRcValue[4];
+      if (prevAux2Data != serialRcValue[5]) { // Only Change if changed in app
+        rcData[5] = serialRcValue[5];
+        prevAux2Data = rcData[5];
+        launchCalledHover = false;
+      }
      rcData[6] = serialRcValue[6];
      rcData[7] = serialRcValue[7];
 #endif
@@ -1022,7 +1266,10 @@ void loop () {
       errorGyroI[ROLL] = 0; errorGyroI[PITCH] = 0; errorGyroI[YAW] = 0;
       errorAngleI[ROLL] = 0; errorAngleI[PITCH] = 0;
       if (conf.activate[BOXARM] > 0) {             // Arming/Disarming via ARM BOX
-        if ( rcOptions[BOXARM] && f.OK_TO_ARM ) go_arm(); else if (f.ARMED) go_disarm();
+        if ( rcOptions[BOXARM] && f.OK_TO_ARM ) 
+	          go_arm();
+        else if (f.ARMED) 
+	          go_disarm();
       }
     }
     if(rcDelayCommand == 20) {
@@ -1036,13 +1283,9 @@ void loop () {
       } else {                        // actions during not armed
         i=0;
         if (rcSticks == THR_LO + YAW_LO + PIT_LO + ROL_CE) {    // GYRO calibration
-          calibratingG=512;
-          #if GPS 
-            GPS_reset_home_position();
-          #endif
-          #if BARO
-            calibratingB=10;  // calibrate baro to new ground level (10 * 25 ms = ~250 ms non blocking)
-          #endif
+	//------------------------------------------------------------
+		calibration_fun();
+	//------------------------------------------------------------
         }
         #if defined(INFLIGHT_ACC_CALIBRATION)  
          else if (rcSticks == THR_LO + YAW_LO + PIT_HI + ROL_HI) {    // Inflight ACC calibration START/STOP
@@ -1167,17 +1410,24 @@ void loop () {
     #if !defined(GPS_LED_INDICATOR)
       if (f.ANGLE_MODE || f.HORIZON_MODE) {STABLEPIN_ON;} else {STABLEPIN_OFF;}
     #endif
-
+	// ****************** Baylor Modified BARO Loop ***********************/
     #if BARO
       #if (!defined(SUPPRESS_BARO_ALTHOLD))
         if (rcOptions[BOXBARO]) {
             if (!f.BARO_MODE) {
               f.BARO_MODE = 1;
-              AltHold = EstAlt;
+              AltHold = EstAlt; // Rewriting AltHold defined in old Baylor Launch Code
               initialThrottleHold = rcCommand[THROTTLE];
               errorAltitudeI = 0;
               BaroPID=0;
             }
+        } else if (launchCalledHover) {  // Baylor Added Additional AltHold Enable
+          if (!f.BARO_MODE) {
+            f.BARO_MODE = 1;
+            initialThrottleHold = rcCommand[THROTTLE];
+            errorAltitudeI = 0;
+            BaroPID = 0;
+          }          
         } else {
             f.BARO_MODE = 0;
         }
@@ -1192,6 +1442,8 @@ void loop () {
         }
       #endif
     #endif
+	// ******************* End Baylor Modified BARO Loop ******************/
+
     #if MAG
       if (rcOptions[BOXMAG]) {
         if (!f.MAG_MODE) {
@@ -1273,7 +1525,7 @@ void loop () {
       case 0:
         taskOrder++;
         #if MAG
-          if (Mag_getADC()) break; // max 350 µs (HMC5883) // only break when we actually did something
+          if (Mag_getADC()) break; // max 350 碌s (HMC5883) // only break when we actually did something
         #endif
       case 1:
         taskOrder++;
@@ -1458,3 +1710,28 @@ void loop () {
   writeServos();
   writeMotors();
 }
+
+/************************ Baylor University Functions ************************************/
+void go_launch() {
+  isLaunch = true;
+}
+
+void turnOnIRLED(){
+  isFiring = true;
+  //hits++;
+}
+
+void firstHitDeg(){
+  
+}
+
+void secondHitDeg(){
+  
+}
+
+void thirdHitDeg(){
+  
+}
+
+
+/************************ End Baylor Functions *******************************************/

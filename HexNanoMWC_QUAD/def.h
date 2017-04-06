@@ -1,7 +1,6 @@
 /**************************************************************************************/
 /***************             test configurations                   ********************/
 /**************************************************************************************/
-
 #if COPTERTEST == 1
   #define QUADP
   #define WMP
@@ -295,6 +294,60 @@
 #endif
 
 /**************************  atmega32u4 (Promicro)  ***********************************/
+/*************************************************************************************/
+/************************************ Baylor Defs ************************************/
+/*************************************************************************************/
+
+/************************************** IR LED ****************************************/
+#define SYSCLOCK             16000000                   // System clock of Atmega32u4 is 16 MHz
+#define TIMER_RESET
+#define TIMER_ENABLE_PWM     (TCCR0A |= _BV(COM0A0))    // Enables Timer/Counter0
+#define TIMER_DISABLE_PWM    (TCCR0A &= ~(_BV(COM0A0))) // Disables Timer/Counter0 
+#define TIMER_ENABLE_INTR    (TIMSK0 |= _BV(OCIE0A))    // Enables interrupt
+#define TIMER_DISABLE_INTR   (TIMSK0 &= ~(_BV(OCIE0A))) // Disables interrupt
+#define TIMER_INTR_NAME      TIMER0_COMPA_vect          // Sets interrupt of timer0
+
+
+#define TIMER_CONFIG_KHZ(val) ({ \
+  const uint8_t pwmval = SYSCLOCK / 2000 / (val); \ // Calculates pwm value using system clock on chip and desired frequency
+  TCCR0A = _BV(WGM01) | _BV(WGM00); \               // Sets bits 0 and 1 in the Timer/Counter0 Control Register A to 1, enabling Fast PWM mode of Operation
+  TCCR0B = _BV(WGM02) | _BV(CS00); \                // Sets bits 0 and 3 in the Timer/Counter0 Control Register A to 1. makes the Top of the waveform OCRA, set flag when at top, and makes prescaler equal to 1 
+  OCR0A = pwmval; \                                 // Sets Timer/Counter0 channel A to count up to calculated pwm val
+  OCR0B = pwmval / 3; \                             // We are not using channel B
+})
+
+ #define TIMER_PWM_PIN        11 // Digital pin 11
+ #define IR_PIN               pinMode(TIMER_PWM_PIN, OUTPUT); // set digital pin 11 to output ***Note this pin is on the underside of flexbot board, before the resistor/transitor to motor 6***
+
+
+/***************** Hit Detection System :: IR Transistor and RGB LED ******************/
+
+// Pin A4 -> PF1(ADC1) 40
+
+#define IR_SENSOR              pinMode(A5,INPUT); // set IR Sensor to input
+
+// Pin D4 -> PD4
+
+#define RGB_RED                pinMode(RGBredPin,OUTPUT); // set Red LED to output
+#define RGB_RED_ON             PORTD |= (1<<4); // turn pin on
+#define RGB_RED_OFF            PORTD &= ~(1<<4); // turn pin off
+
+// Pin D8 -> PB4
+
+#define RGB_GREEN              pinMode(RGBgreenPin,OUTPUT); // set Green LED to output
+#define RGB_GREEN_ON           PORTB |= (1<<4); // turn pin on
+#define RGB_GREEN_OFF          PORTB &= ~(1<<4); // turn pin off
+
+// Pin D12 -> PD6
+
+#define RGB_BLUE              pinMode(RGBbluePin,OUTPUT); // set Blue LED to output
+#define RGB_BLUE_ON           PORTD |= (1<<6); // turn pin on
+#define RGB_BLUE_OFF          PORTD &= ~(1<<6); // turn pin off
+
+
+/*************************************************************************************/
+/********************************** End Baylor Defs **********************************/
+/*************************************************************************************/
 #if defined(PROMICRO)
   #if defined(MICROWII)
     #define A32U4ALLPINS 
@@ -1325,7 +1378,7 @@
 #if defined(HEX_NANO)
   #define MPU6050
   #define BMP085
-  #define HMC5883
+  //#define HMC5883
   #define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  = -X; accADC[PITCH]  = -Y; accADC[YAW]  =  Z;}
   #define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] =  Y; gyroADC[PITCH] = -X; gyroADC[YAW] = -Z;}
   #define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  =  X; magADC[PITCH]  =  -Y; magADC[YAW]  = -Z;}

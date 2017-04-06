@@ -5,7 +5,6 @@ static int16_t  i2c_errors_count_old = 0;
 
 static uint8_t SequenceActive[5]={0,0,0,0,0};
 
-
 #if defined(BUZZER)
   uint8_t isBuzzerON() { return resourceIsOn[1]; } // returns true while buzzer is buzzing; returns 0 for silent periods
 #else
