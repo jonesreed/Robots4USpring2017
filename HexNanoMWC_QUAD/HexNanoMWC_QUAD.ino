@@ -69,7 +69,9 @@ unsigned long difInTime = 0;                // Difference in time between time w
 unsigned long invulnerabilityTime = 1000;   // After drone is hit, will be invunerable ***Currently set to 1s***
 
 // Red RGB LED blinking
-// Since the main loop is dependent on time the blinking of the LED is done by checking timings instead of delays
+
+// Since the main loop is dependent on time the blinking of 
+// the LED is done by checking timings instead of delays
 
 boolean shouldBeBlinking = false;           // True when drone has been hit 3 times and the RGB should be blinking Red, O.W. false
 unsigned long redBlinkOn;                   // Time when the Red LED turns on to blink
