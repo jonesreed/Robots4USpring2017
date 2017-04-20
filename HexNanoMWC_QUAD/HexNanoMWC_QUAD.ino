@@ -1180,7 +1180,7 @@ void loop () {
           isFiring = false;
           firstTimeIR = 1;
         }
-    }/**/
+    }*/
 	  if (fireCalled)
 	  {
 		  if (shotsFired < shotsRequired && !(isFiring))
@@ -1214,6 +1214,9 @@ void loop () {
 
     // Reset lives via landing from dying
     if(hasLanded){
+      hits = 4; // Continue blinking Red LED but does not call funcToLand()
+      rcData[THROTTLE] = 0; // Cuts throttle to motors reguardless of user input until lives has been reset
+      
       currentLandTime = millis();
       LandTimeDiff = currentLandTime - landingTime;
       if(LandTimeDiff >= timeToResetLives){
@@ -1799,7 +1802,6 @@ void funcToLand(){
   conf.P8[ROLL]     = 33;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
   conf.P8[PITCH]    = 33;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
 
-  // Decrease Z-acceleration until desired acc is reached
   if(rcData[THROTTLE] >= MINTHROTTLE){
     // Decrease power to motors
     rcData[THROTTLE] -= landingDecrement;
@@ -1811,8 +1813,7 @@ void funcToLand(){
       
     hasLanded = 1;
     landingTime = millis();
-    //hits++;
-    
+       
   }
 }
 
