@@ -1,0 +1,1 @@
+baylor_wiring.c is the modified version of the Arduino wiring.c library. This moves all the functionality of "delay()", "delayMicroseconds()", "millis()", and "micros()," so that they operate using timer3 instead of timer0.

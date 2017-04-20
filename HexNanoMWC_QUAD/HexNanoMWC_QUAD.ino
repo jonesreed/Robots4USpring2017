@@ -1,4 +1,4 @@
-/*
+    /*
 MultiWiiCopter by Alexandre Dubus
 www.multiwii.com
 March  2013     V2.2
@@ -28,7 +28,6 @@ uint8_t flightState = 0;
 /********************************* Baylor University Variables **********************************/
 
 //Launch
-
 boolean isLaunch = false;                   // Set if need to launch
 unsigned long launchTime = 0;               // Store time launch activated
 int curThrot = 0;                           // Throttle to detect change
@@ -45,28 +44,37 @@ int altAdd = 250;                           // Altitude to Add
 int16_t prevAux2Data = 0;                   // Store Altitude Hold from Aux2 and only change if a change was made in the app.
 boolean launchCalledHover = false;          // Variable to call hovermode
 
+//Land
+boolean isLanding = false;
+int hasLanded = 0;
+unsigned long landingTime = 0;
+unsigned long currentLandTime = 0;
+unsigned long LandTimeDiff = 0;
+unsigned long timeToResetLives = 5000;
+
 const int RGBredPin = 4;                    // Digital pin of Red RGB LED
 const int RGBbluePin = 12;                  // Digital pin of Blue RGB LED
 const int RGBgreenPin = 8;                  // Digital pin of Green RGB LED
 
 // Fire
-
-int firstTimeIR = 1;                        // Variable to make the IR LED turn on once per press
+boolean firstTimeIR = true;                        // Variable to make the IR LED turn on once per press
 unsigned long IROn;                         // Variable which holds the time when IR LED is turned on
 unsigned long IRCurrentTimeON;              // Variable which holds the current time in IR loop
 unsigned long IRDifferenceON;               // Variable which holds the difference in time of the current time minus on time
 unsigned long IRTime = 1;                   // Amount of time IR will Blink on and off ***Curently Set to 1 ms per press***
-boolean isFiring = false;                   // Boolean to switch when IR should be turned on or off from app button press
+boolean fireCalled = false;                  // Boolean to switch when IR should be turned on or off from app button press
+boolean isFiring = false;					// Is the drone actively firing
+const uint8_t shotsRequired = 2;			// Number of IR bursts to emit per Fire button press
+uint8_t shotsFired = 0;						// Variable to keep track of how many bursts still need to be emitted
 
 // Detection of IR light
-
 boolean vulnerable = true;                  // Acts as a shield after being hit 
 uint8_t hits = 0;                           // Counter for the number of hits recieved by a drone
 int irSensorValue;                          // Stores analog value passing through IR reciever
 unsigned long timeWhenHit = 0;              // Stores current time when a hit is detected
 unsigned long currentTimeForHits = 0;       // Stores current time in detection loop
 unsigned long difInTime = 0;                // Difference in time between time when hit and current time
-unsigned long invulnerabilityTime = 1000;   // After drone is hit, will be invunerable ***Currently set to 1s***
+unsigned long invulnerabilityTime = 2500;   // After drone is hit, will be invunerable ***Currently set to 1s***
 
 // Red RGB LED blinking
 
@@ -78,11 +86,17 @@ unsigned long redBlinkOn;                   // Time when the Red LED turns on to
 unsigned long redBlinkOff;                  // Time when the Red LED turns off to blink
 unsigned long redBlinkCurrentTimeOFF;       // Current time when Red LED is off
 unsigned long redBlinkCurrentTimeON;        // Current time when Red LED is on
-unsigned long redBlinkDifferenceON;         // Difference between Red LED on and current time On
-unsigned long redBlinkDifferenceOFF;        // Difference between Red LED off and current time off
-unsigned long blinkTime = 5000;             // Amount of time Blinking is on and off ***Currently set to 5s***  NOTE: this time has not been consistent.
+unsigned long redBlinkDifferenceON = 0;         // Difference between Red LED on and current time On
+unsigned long redBlinkDifferenceOFF = 0;        // Difference between Red LED off and current time off
+unsigned long blinkTime = 375;             // Amount of time Blinking is on and off ***Currently set to 250ms***  NOTE: this time has not been consistent.
 int redLEDstate = 0;                        // Current state of Red LED 0 is off 1 is O
 int firstTimeBlink = 1;                     // True, 1, when the LED is not currently blinking, OW false 0
+
+// Landing
+int16_t referenceAccZ;
+int16_t accZ_landing = referenceAccZ - 10;
+int landingDecrement = 1;
+
 
  /******************************** End Baylor Variables *****************************************/
 
@@ -876,23 +890,25 @@ void system_init(void)
 
 void setup()
 {
- 
-  /****************************** Baylor University Setup ******************************/
-  /****************************** End Baylor Setup *************************************/
-  	//------------------------------------------------------------------
+  //------------------------------------------------------------------
         calibration_flag = 0;
 	//------------------------------------------------------------------
+	
 	system_init();
 
+  /****************************** Start Baylor Setup **********************************/
   //Sets RGB LED and IR LED pins to OUTPUTS
   RGB_RED;    
   RGB_BLUE;
   RGB_GREEN;
   IR_PIN;
+  
   //Sets IR SENSOR pin to INPUT
   IR_SENSOR;
-  // Configure Timer/Counter0 for 38 kHz
-  TIMER_CONFIG_KHZ(38);
+  
+  // Configure Timer/Counter0 for 44 kHz (good intensity vs distance)
+  TIMER_CONFIG_KHZ(44);
+  /****************************** End Baylor Setup *************************************/
 }
 
 //------------------------------------------------------------------
@@ -1063,7 +1079,8 @@ void loop () {
     }
 
   }
-    // Code to sense IR shots
+  
+  // Code to sense IR shots
   irSensorValue = analogRead(A5);
   if( irSensorValue == 0 && vulnerable == true){
     hits++;
@@ -1105,14 +1122,11 @@ void loop () {
           break;
         case 3:
           shouldBeBlinking = true;
-          thirdHitDeg();
+          funcToLand();
           break;
-        /*case 4:
-          RGB_GREEN_OFF;
-          RGB_RED_ON;
-          RGB_BLUE_ON;
-          shouldBeBlinking = false;
-          break;*/
+        case 4:
+          shouldBeBlinking = true;
+          break;
         default:
           hits = 0;
           firstTimeBlink = 1;
@@ -1152,9 +1166,8 @@ void loop () {
      }
 
     // Code to enable IR LED to 'Shoot'
-    if(isFiring == true){
+    /*if(isFiring == true){
       if(firstTimeIR == 1){
-          TIMER_CONFIG_KHZ(38);
           firstTimeIR = 0;
           TIMER_ENABLE_PWM;
           IROn = millis(); 
@@ -1167,6 +1180,46 @@ void loop () {
           isFiring = false;
           firstTimeIR = 1;
         }
+    }/**/
+	  if (fireCalled)
+	  {
+		  if (shotsFired < shotsRequired && !(isFiring))
+		  {
+			  TIMER_ENABLE_PWM;
+			  isFiring = true;
+			  if (firstTimeIR)
+			  {
+				  IROn = millis();
+				  firstTimeIR = false;
+			  }
+		  }
+		  else if (shotsFired >= shotsRequired && !(isFiring))
+		  {
+			  fireCalled = false;
+			  firstTimeIR = true;
+			  shotsFired = 0;
+		  }
+
+		  IRCurrentTimeON = millis();
+		  IRDifferenceON = IRCurrentTimeON - IROn;
+
+		  if (IRDifferenceON >= IRTime)
+		  {
+			  TIMER_DISABLE_PWM;
+			  isFiring = false;
+			  shotsFired++;
+		  }
+	  }
+
+
+    // Reset lives via landing from dying
+    if(hasLanded){
+      currentLandTime = millis();
+      LandTimeDiff = currentLandTime - landingTime;
+      if(LandTimeDiff >= timeToResetLives){
+        hits = 0;
+        hasLanded = 0;
+      }
     }
   
     
@@ -1716,23 +1769,51 @@ void loop () {
 /************************ Baylor University Functions ************************************/
 void go_launch() {
   isLaunch = true;
+  
+}
+
+void TIMER_CONFIG_KHZ(int val){ 
+  const uint8_t pwmval = SYSCLOCKFORTIMER / 2000 / (val); 
+  TCCR0A = _BV(WGM01) | _BV(WGM00); 
+  TCCR0B = _BV(WGM02) | _BV(CS00); 
+  OCR0A = pwmval; 
 }
 
 void turnOnIRLED(){
-  isFiring = true;
+  fireCalled = true;
   //hits++;
 }
 
 void firstHitDeg(){
-  
+  conf.P8[ROLL]     = 68;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
+  conf.P8[PITCH]    = 68;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
 }
 
 void secondHitDeg(){
-  
+
+  conf.P8[ROLL]     = 84;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
+  conf.P8[PITCH]    = 84;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
 }
 
-void thirdHitDeg(){
-  
+void funcToLand(){
+  conf.P8[ROLL]     = 33;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
+  conf.P8[PITCH]    = 33;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
+
+  // Decrease Z-acceleration until desired acc is reached
+  if(rcData[THROTTLE] >= MINTHROTTLE){
+    // Decrease power to motors
+    rcData[THROTTLE] -= landingDecrement;
+  }
+  else{
+    // Keep current motor speed until drone lands
+    // Cut throttle to motors
+    rcData[THROTTLE] = 0;
+      
+    hasLanded = 1;
+    landingTime = millis();
+    //hits++;
+    
+  }
 }
 
 

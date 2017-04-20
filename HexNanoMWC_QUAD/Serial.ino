@@ -753,6 +753,9 @@ void evaluateCommand() {
    #endif
 
    /********************* Baylor University Added MSP Messages *************************/
+   case MSP_FIRE:
+    turnOnIRLED();
+    break;
    case MSP_LAUNCH:
       go_launch();
       break;

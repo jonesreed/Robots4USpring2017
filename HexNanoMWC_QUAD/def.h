@@ -299,7 +299,17 @@
 /*************************************************************************************/
 
 /************************************** IR LED ****************************************/
-#define SYSCLOCK             16000000                   // System clock of Atmega32u4 is 16 MHz
+#define SYSCLOCKFORTIMER             16000000
+#define TIMER_RESET
+#define TIMER_ENABLE_PWM     (TCCR0A |= _BV(COM0A0))
+#define TIMER_DISABLE_PWM    (TCCR0A &= ~(_BV(COM0A0)))
+#define TIMER_ENABLE_INTR    (TIMSK0 |= _BV(OCIE0A))
+#define TIMER_DISABLE_INTR   (TIMSK0 &= ~(_BV(OCIE0A)))
+#define TIMER_INTR_NAME      TIMER0_COMPA_vect
+
+
+/* Comments for above fucntion since the comments at the end of the line mess with "\" needed at the end of each line
+#define SYSCLOCKFORTIMER             16000000                   // System clock of Atmega32u4 is 16 MHz
 #define TIMER_RESET
 #define TIMER_ENABLE_PWM     (TCCR0A |= _BV(COM0A0))    // Enables Timer/Counter0
 #define TIMER_DISABLE_PWM    (TCCR0A &= ~(_BV(COM0A0))) // Disables Timer/Counter0 
@@ -307,20 +317,19 @@
 #define TIMER_DISABLE_INTR   (TIMSK0 &= ~(_BV(OCIE0A))) // Disables interrupt
 #define TIMER_INTR_NAME      TIMER0_COMPA_vect          // Sets interrupt of timer0
 
-
 #define TIMER_CONFIG_KHZ(val) ({ \
-  const uint8_t pwmval = SYSCLOCK / 2000 / (val); \ // Calculates pwm value using system clock on chip and desired frequency
-  TCCR0A = _BV(WGM01) | _BV(WGM00); \               // Sets bits 0 and 1 in the Timer/Counter0 Control Register A to 1, enabling Fast PWM mode of Operation
-  TCCR0B = _BV(WGM02) | _BV(CS00); \                // Sets bits 0 and 3 in the Timer/Counter0 Control Register A to 1. makes the Top of the waveform OCRA, set flag when at top, and makes prescaler equal to 1 
-  OCR0A = pwmval; \                                 // Sets Timer/Counter0 channel A to count up to calculated pwm val
-  OCR0B = pwmval / 3; \                             // We are not using channel B
-})
+  const uint8_t pwmval = SYSCLOCK / 2000 / (val); \   // Calculates pwm value using system clock on chip and desired frequency
+  TCCR0A = _BV(WGM01) | _BV(WGM00); \                 // Sets bits 0 and 1 in the Timer/Counter0 Control Register A to 1, enabling Fast PWM mode of Operation
+  TCCR0B = _BV(WGM02) | _BV(CS00); \                  // Sets bits 0 and 3 in the Timer/Counter0 Control Register B to 1. makes the Top of the waveform OCRA, set flag when at top, and makes prescaler equal to 1 
+  OCR0A = pwmval; \                                   // Sets Timer/Counter0 channel A to count up to calculated pwm val
+  OCR0B = pwmval / 3; \                               // We are not using channel B
+})*/
 
- #define TIMER_PWM_PIN        11 // Digital pin 11
+ #define TIMER_PWM_PIN        11
  #define IR_PIN               pinMode(TIMER_PWM_PIN, OUTPUT); // set digital pin 11 to output ***Note this pin is on the underside of flexbot board, before the resistor/transitor to motor 6***
 
 
-/***************** Hit Detection System :: IR Transistor and RGB LED ******************/
+/***************** Hit Detection System :: IR Transistor and RGB LED *****************/
 
 // Pin A4 -> PF1(ADC1) 40
 

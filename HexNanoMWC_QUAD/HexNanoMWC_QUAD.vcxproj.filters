@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="baylor-flexbot-arduino-quad.ino" />
+    <None Include="HexNanoMWC_QUAD.ino" />
     <None Include="Alarms.ino" />
     <None Include="EEPROM.ino" />
     <None Include="GPS.ino" />
@@ -27,7 +27,7 @@
     <None Include="Serial.ino" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="__vm\.baylor-flexbot-arduino-quad.vsarduino.h">
+    <ClInclude Include="__vm\.HexNanoMWC_QUAD.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="config.h">
