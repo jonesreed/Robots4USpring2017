@@ -1128,7 +1128,10 @@ void loop () {
           shouldBeBlinking = true;
           break;
         default:
-          hits = 0;
+          //LED turns white, if this happens an error has occured somewhere.
+          RGB_GREEN_ON;
+          RGB_RED_ON;
+          RGB_BLUE_ON;
           firstTimeBlink = 1;
           shouldBeBlinking = false;
           break;
