@@ -38,7 +38,7 @@ int accToReach = -1000;                     // Lower or Negative Means faster
 boolean accReached = false;                 // Has the acceleration been reached
 unsigned long timeToLaunch = 1200000;       // Time in microseconds
 unsigned long timeToStable = 500000;        // Time in microseconds
-int launchThrot = 1375;                     // Throttle during launch best 1350,-50
+int launchThrot = 1475;                     // Throttle during launch best 1350,-50
 int stableThrot = launchThrot - 10;         // Throttle to stabalize before altitude is maintained
 int altAdd = 250;                           // Altitude to Add
 int16_t prevAux2Data = 0;                   // Store Altitude Hold from Aux2 and only change if a change was made in the app.
@@ -50,7 +50,7 @@ int hasLanded = 0;
 unsigned long landingTime = 0;
 unsigned long currentLandTime = 0;
 unsigned long LandTimeDiff = 0;
-unsigned long timeToResetLives = 5000;
+unsigned long timeToResetLives = 1500;
 
 const int RGBredPin = 4;                    // Digital pin of Red RGB LED
 const int RGBbluePin = 12;                  // Digital pin of Blue RGB LED
@@ -95,8 +95,18 @@ int firstTimeBlink = 1;                     // True, 1, when the LED is not curr
 // Landing
 int16_t referenceAccZ;
 int16_t accZ_landing = referenceAccZ - 10;
-int landingDecrement = 1;
-
+const uint8_t landingDecrement = 1;
+unsigned long landingStartTime;
+unsigned long landingCurrentTime;
+const uint8_t landingDelay = 70;                   // Delay between decrementing the throttle in ms
+boolean firstDelayCall = true;              // Is it the first time through the landing delay?
+boolean firstLandingCall = true;            // Is it the first time through the landing function?
+uint16_t landingThrottle;
+uint16_t landingThrottleValue = 1400;
+uint16_t landingMin = landingThrottleValue;
+unsigned long landingHoldStartTime;
+uint16_t landingHoldTime = 2500;            // ms to hold minimum landing throttle on landing
+boolean landingHold = false;                // is the throttle being held for landing?
 
  /******************************** End Baylor Variables *****************************************/
 
@@ -906,8 +916,9 @@ void setup()
   //Sets IR SENSOR pin to INPUT
   IR_SENSOR;
   
+  
   // Configure Timer/Counter0 for 44 kHz (good intensity vs distance)
-  TIMER_CONFIG_KHZ(44);
+  TIMER_CONFIG_KHZ(51);
   /****************************** End Baylor Setup *************************************/
 }
 
@@ -1080,9 +1091,10 @@ void loop () {
 
   }
   
-  // Code to sense IR shots
+   //Code to sense IR shots
   irSensorValue = analogRead(A5);
-  if( irSensorValue == 0 && vulnerable == true){
+  
+  if( irSensorValue < 100 && vulnerable){
     hits++;
     vulnerable = false;
     timeWhenHit = millis();
@@ -1121,6 +1133,7 @@ void loop () {
           secondHitDeg();
           break;
         case 3:
+          vulnerable = false;
           shouldBeBlinking = true;
           funcToLand();
           break;
@@ -1224,6 +1237,7 @@ void loop () {
       LandTimeDiff = currentLandTime - landingTime;
       if(LandTimeDiff >= timeToResetLives){
         hits = 0;
+        vulnerable = true;
         hasLanded = 0;
       }
     }
@@ -1791,32 +1805,77 @@ void turnOnIRLED(){
 }
 
 void firstHitDeg(){
-  conf.P8[ROLL]     = 68;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
-  conf.P8[PITCH]    = 68;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
+  conf.P8[ROLL]     = 71;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
+  conf.P8[PITCH]    = 71;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
 }
 
 void secondHitDeg(){
 
-  conf.P8[ROLL]     = 84;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
-  conf.P8[PITCH]    = 84;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
+  conf.P8[ROLL]     = 86;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
+  conf.P8[PITCH]    = 86;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
 }
 
 void funcToLand(){
-  conf.P8[ROLL]     = 33;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
-  conf.P8[PITCH]    = 33;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
-
-  if(rcData[THROTTLE] >= MINTHROTTLE){
-    // Decrease power to motors
-    rcData[THROTTLE] -= landingDecrement;
+  if(firstLandingCall)
+  {
+    landingThrottle = rcData[THROTTLE] - landingDecrement;
+    launchCalledHover = false;
+    conf.P8[ROLL]     = 33;  conf.I8[ROLL]    = 30; conf.D8[ROLL]     = 23;
+    conf.P8[PITCH]    = 33;  conf.I8[PITCH]    = 30; conf.D8[PITCH]    = 23;
+    
+    firstLandingCall = false;
+    landingStartTime = millis();
   }
-  else{
-    // Keep current motor speed until drone lands
-    // Cut throttle to motors
-    rcData[THROTTLE] = 0;
+ 
+  /*if(firstDelayCall)
+  {
+    landingStartTime = millis();
+    firstDelayCall = false;
+    
+  }*/
+
+  landingCurrentTime = millis();
+
+ 
+
+  if(landingCurrentTime - landingStartTime >= landingDelay)
+  {
+    if(rcData[THROTTLE] < landingMin && landingHold == false){
+      landingMin = MINTHROTTLE;
+      landingThrottle = rcData[THROTTLE] - landingDecrement;
+      //firstDelayCall = true;
+      landingStartTime = millis();
+    }
+    else if(rcData[THROTTLE] > landingMin && landingHold == false){
+      // Decrease power to motors
+      rcData[THROTTLE] = landingThrottle;
+      landingThrottle -= landingDecrement;
+      //firstDelayCall = true;
+      landingStartTime = millis();
+    }
+    else if(landingHold == false)
+    {
+      // Keep current motor speed until drone lands
+      // Cut throttle to motors
+      //rcData[THROTTLE] = landingMin;
+      landingHold = true;
+      landingHoldStartTime = millis();
+    }
+    else {
+      rcData[THROTTLE] = landingThrottle;
+      if(landingCurrentTime - landingHoldStartTime >= landingHoldTime){
+    
+        go_disarm();
+        firstLandingCall = true;
+        firstDelayCall = true;
+        landingHold = false;
+        hasLanded = 1;
+        landingTime = millis();
+        landingMin = landingThrottleValue;
       
-    hasLanded = 1;
-    landingTime = millis();
-       
+     
+      }     
+    }
   }
 }
 
